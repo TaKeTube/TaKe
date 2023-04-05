@@ -35,24 +35,15 @@ Image3 hw_1_2(const std::vector<std::string> &/*params*/) {
 
     for (int y = 0; y < img.height; y++) {
         for (int x = 0; x < img.width; x++) {
-            Vector3 ray = { ((x + Real(0.5)) / img.width - Real(0.5)) * viewport_width,
+            Ray r = {Vector3{0,0,0}, 
+                     Vector3{((x + Real(0.5)) / img.width - Real(0.5)) * viewport_width,
                             ((y + Real(0.5)) / img.height - Real(0.5)) * viewport_height,
-                            Real(-1)};
+                            Real(-1)}};
 
-            Vector3 oc = -s.center;
-            Real a = dot(ray, ray);
-            Real half_b = dot(oc, ray);
-            Real c = dot(oc, oc) - s.radius*s.radius;
-            Real discriminant = half_b*half_b - a*c;
-
-            if(discriminant > 0)
-
-            img(x, img.height - y - 1) = 
-                normalize();
+            std::optional<Intersection> v_ = sphere_intersect(s, r);
+            img(x, img.height - y - 1) = v_ ? (v_->normal+Real(1))/Real(2) : Vector3{0.5, 0.5, 0.5};
         }
     }
-
-
     return img;
 }
 
@@ -100,6 +91,25 @@ Image3 hw_1_3(const std::vector<std::string> &params) {
     UNUSED(vfov);
 
     Image3 img(640 /* width */, 480 /* height */);
+
+    Image3 img(640 /* width */, 480 /* height */);
+    Real viewport_height = 2.0;
+    Real viewport_width = viewport_height / img.height * img.width;
+
+    Sphere s = {Vector3{ 0.0, 0.0, -2.0}, 1.0, 0};
+
+    for (int y = 0; y < img.height; y++) {
+        for (int x = 0; x < img.width; x++) {
+            Ray r = {Vector3{0,0,0}, 
+                     Vector3{((x + Real(0.5)) / img.width - Real(0.5)) * viewport_width,
+                            ((y + Real(0.5)) / img.height - Real(0.5)) * viewport_height,
+                            Real(-1)}};
+
+            std::optional<Intersection> v_ = sphere_intersect(s, r);
+            img(x, img.height - y - 1) = v_ ? (v_->normal+Real(1))/Real(2) : Vector3{0.5, 0.5, 0.5};
+        }
+    }
+    return img;
 
     return img;
 }

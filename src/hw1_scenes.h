@@ -1,5 +1,7 @@
 #pragma once
 
+#include <optional>
+
 namespace hw1 {
 
 enum class MaterialType {
@@ -36,6 +38,41 @@ struct Scene {
     std::vector<Material> materials;
     std::vector<PointLight> lights; 
 };
+
+struct Ray {
+    Vector3 origin;
+    Vector3 dir;
+};
+
+struct Intersection {
+    Vector3 pos;
+    Vector3 normal;
+};
+
+std::optional<Intersection> sphere_intersect(const Sphere& s, const Ray& r){
+    Vector3 oc = r.origin - s.center;
+    Real a = dot(r.dir, r.dir);
+    Real half_b = dot(oc, r.dir);
+    Real c = dot(oc, oc) - s.radius*s.radius;
+
+    Real discriminant = half_b*half_b - a*c;
+    if (discriminant < 0) 
+        return {};
+    Real sqrtd = sqrt(discriminant);
+
+    Real root = (-half_b - sqrtd) / a;
+    if (root < Real(0) || infinity<Real>() < root) {
+        root = (-half_b + sqrtd) / a;
+        if (root < Real(0) || infinity<Real>() < root)
+            return {};
+    }
+
+    Intersection v;
+    v.pos = r.origin + r.dir * root;
+    v.normal = (v.pos - s.center) / s.radius;
+
+    return v;
+}
 
 Scene hw1_scene_0{
     Camera{
