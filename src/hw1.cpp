@@ -91,26 +91,28 @@ Image3 hw_1_3(const std::vector<std::string> &params) {
     UNUSED(vfov);
 
     Image3 img(640 /* width */, 480 /* height */);
+    Sphere s = {Vector3{ 0.0, 0.0, -2.0}, 1.0, 0};
 
-    Image3 img(640 /* width */, 480 /* height */);
-    Real viewport_height = 2.0;
+    Real theta = vfov / 180 * c_PI;
+    Real h = tan(theta/2);
+    Real viewport_height = 2.0 * h;
     Real viewport_width = viewport_height / img.height * img.width;
 
-    Sphere s = {Vector3{ 0.0, 0.0, -2.0}, 1.0, 0};
+    Vector3 w = normalize(lookfrom - lookat);
+    Vector3 u = normalize(cross(up, w));
+    Vector3 v = cross(w, u);
 
     for (int y = 0; y < img.height; y++) {
         for (int x = 0; x < img.width; x++) {
-            Ray r = {Vector3{0,0,0}, 
-                     Vector3{((x + Real(0.5)) / img.width - Real(0.5)) * viewport_width,
-                            ((y + Real(0.5)) / img.height - Real(0.5)) * viewport_height,
-                            Real(-1)}};
+            Ray r = {lookfrom, 
+                     u * ((x + Real(0.5)) / img.width - Real(0.5)) * viewport_width +
+                     v * ((y + Real(0.5)) / img.height - Real(0.5)) * viewport_height -
+                     w};
 
             std::optional<Intersection> v_ = sphere_intersect(s, r);
             img(x, img.height - y - 1) = v_ ? (v_->normal+Real(1))/Real(2) : Vector3{0.5, 0.5, 0.5};
         }
     }
-    return img;
-
     return img;
 }
 
