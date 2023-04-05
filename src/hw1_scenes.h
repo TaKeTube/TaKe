@@ -4,6 +4,8 @@
 
 namespace hw1 {
 
+const Real epsilon = 1e-4;
+
 enum class MaterialType {
     Diffuse,
     Mirror
@@ -42,12 +44,15 @@ struct Scene {
 struct Ray {
     Vector3 origin;
     Vector3 dir;
+    Real tmin;
+    Real tmax;
 };
 
 struct Intersection {
     Vector3 pos;
     Vector3 normal;
     Real t;
+    int material_id;
 };
 
 std::optional<Intersection> sphere_intersect(const Sphere& s, const Ray& r){
@@ -62,9 +67,9 @@ std::optional<Intersection> sphere_intersect(const Sphere& s, const Ray& r){
     Real sqrtd = sqrt(discriminant);
 
     Real root = (-half_b - sqrtd) / a;
-    if (root < Real(0) || infinity<Real>() < root) {
+    if (root < r.tmin || r.tmax < root) {
         root = (-half_b + sqrtd) / a;
-        if (root < Real(0) || infinity<Real>() < root)
+        if (root < r.tmin || r.tmax < root)
             return {};
     }
 
@@ -72,8 +77,35 @@ std::optional<Intersection> sphere_intersect(const Sphere& s, const Ray& r){
     v.t = root;
     v.pos = r.origin + r.dir * v.t;
     v.normal = (v.pos - s.center) / s.radius;
+    v.material_id = s.material_id;
 
     return v;
+}
+
+std::optional<Intersection> scene_intersect(const Scene& scene, const Ray& r){
+    Real t = infinity<Real>();
+    Intersection v = {};
+    for(auto& s:scene.shapes){
+        std::optional<Intersection> v_ = sphere_intersect(s, r);
+        if(v_ && v_->t < t){
+            t = v_->t;
+            v = *v_;
+        }
+    }
+    if(t < infinity<Real>())
+        return v;
+    else
+        return {};
+}
+
+bool scene_occluded(const Scene& scene, const Ray& r){
+    Real t = infinity<Real>();
+    for(auto& s:scene.shapes){
+        std::optional<Intersection> v_ = sphere_intersect(s, r);
+        if(v_ && v_->t < t)
+            t = v_->t;
+    }
+    return t < infinity<Real>();
 }
 
 Scene hw1_scene_0{
