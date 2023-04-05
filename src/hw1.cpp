@@ -129,6 +129,38 @@ Image3 hw_1_4(const std::vector<std::string> &params) {
 
     Image3 img(640 /* width */, 480 /* height */);
 
+    Scene scene = hw1_scenes[scene_id];
+    Camera cam = scene.camera;
+
+    Real theta = cam.vfov / 180 * c_PI;
+    Real h = tan(theta/2);
+    Real viewport_height = 2.0 * h;
+    Real viewport_width = viewport_height / img.height * img.width;
+
+    Vector3 w = normalize(cam.lookfrom - cam.lookat);
+    Vector3 u = normalize(cross(cam.up, w));
+    Vector3 v = cross(w, u);
+
+
+    for (int y = 0; y < img.height; y++) {
+        for (int x = 0; x < img.width; x++) {
+            Ray r = {cam.lookfrom, 
+                     u * ((x + Real(0.5)) / img.width - Real(0.5)) * viewport_width +
+                     v * ((y + Real(0.5)) / img.height - Real(0.5)) * viewport_height -
+                     w};
+
+            Vector3 color = {0.5, 0.5, 0.5};
+            Real t = infinity<Real>();
+            for(auto s:scene.shapes){
+                std::optional<Intersection> v_ = sphere_intersect(s, r);
+                if(v_ && v_->t < t){
+                    t = v_->t;
+                    color = scene.materials[s.material_id].color;
+                }
+            }
+            img(x, img.height - y - 1) = color;
+        }
+    }
     return img;
 }
 

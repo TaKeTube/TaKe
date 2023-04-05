@@ -47,6 +47,7 @@ struct Ray {
 struct Intersection {
     Vector3 pos;
     Vector3 normal;
+    Real t;
 };
 
 std::optional<Intersection> sphere_intersect(const Sphere& s, const Ray& r){
@@ -68,7 +69,8 @@ std::optional<Intersection> sphere_intersect(const Sphere& s, const Ray& r){
     }
 
     Intersection v;
-    v.pos = r.origin + r.dir * root;
+    v.t = root;
+    v.pos = r.origin + r.dir * v.t;
     v.normal = (v.pos - s.center) / s.radius;
 
     return v;
