@@ -252,6 +252,53 @@ Image3 hw_1_6(const std::vector<std::string> &params) {
 
     Image3 img(160 /* width */, 120 /* height */);
 
+    Scene scene = hw1_scenes[scene_id];
+    Camera cam = scene.camera;
+
+    Real theta = cam.vfov / 180 * c_PI;
+    Real h = tan(theta/2);
+    Real viewport_height = 2.0 * h;
+    Real viewport_width = viewport_height / img.height * img.width;
+
+    Vector3 w = normalize(cam.lookfrom - cam.lookat);
+    Vector3 u = normalize(cross(cam.up, w));
+    Vector3 v = cross(w, u);
+
+    for (int y = 0; y < img.height; y++) {
+        for (int x = 0; x < img.width; x++) {
+            Vector3 color_sum = {0, 0, 0};
+            for (int i = 0; i < spp; i++){
+                Ray r = {cam.lookfrom, 
+                        u * ((x + random_double(rng)) / img.width - Real(0.5)) * viewport_width +
+                        v * ((y + random_double(rng)) / img.height - Real(0.5)) * viewport_height -
+                        w,
+                        epsilon,
+                        infinity<Real>()};
+
+                Vector3 color = {0.5, 0.5, 0.5};
+                std::optional<Intersection> v_ = scene_intersect(scene, r);
+                if(!v_){
+                    color_sum += color;
+                    continue;
+                }
+                Intersection v = *v_;
+                color = {Real(0), Real(0), Real(0)};
+
+                for(auto& l:scene.lights){
+                    Real d = length(l.position - v.pos);
+                    Vector3 light_dir = normalize(l.position - v.pos);
+                    Ray shadow_ray = {v.pos, light_dir, epsilon, (1 - epsilon) * d};
+                    if(!scene_occluded(scene, shadow_ray)){
+                        Vector3& Kd = scene.materials[v.material_id].color;
+                        Vector3 n = dot(r.dir, v.normal) > 0 ? -v.normal : v.normal;
+                        color += Kd * max(dot(n, light_dir), Real(0)) * l.intensity / (c_PI * d * d);
+                    }
+                }
+                color_sum += color;
+            }
+            img(x, img.height - y - 1) = color_sum / Real(spp);
+        }
+    }
     return img;
 }
 

@@ -1,10 +1,12 @@
 #pragma once
 
 #include <optional>
+#include <random>
 
 namespace hw1 {
 
 const Real epsilon = 1e-4;
+thread_local std::mt19937 rng{std::random_device{}()};
 
 enum class MaterialType {
     Diffuse,
@@ -107,6 +109,11 @@ bool scene_occluded(const Scene& scene, const Ray& r){
     }
     return t < infinity<Real>();
 }
+
+inline double random_double(std::mt19937 &rng) {
+    return std::uniform_real_distribution<double>{0.0, 1.0}(rng);
+}
+
 
 Scene hw1_scene_0{
     Camera{
