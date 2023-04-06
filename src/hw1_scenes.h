@@ -2,11 +2,11 @@
 
 #include <optional>
 #include <random>
+#include "parallel.h"
 
 namespace hw1 {
 
 const Real epsilon = 1e-4;
-thread_local std::mt19937 rng{std::random_device{}()};
 
 enum class MaterialType {
     Diffuse,
@@ -112,6 +112,32 @@ bool scene_occluded(const Scene& scene, const Ray& r){
 
 inline double random_double(std::mt19937 &rng) {
     return std::uniform_real_distribution<double>{0.0, 1.0}(rng);
+}
+
+Vector3 trace_ray(const Scene& scene, const Ray& r){
+    std::optional<Intersection> v_ = scene_intersect(scene, r);
+    if(!v_) return {0.5, 0.5, 0.5};
+    Intersection v = *v_;
+    Vector3 n = dot(r.dir, v.normal) > 0 ? -v.normal : v.normal;
+
+    if(scene.materials[v.material_id].type == MaterialType::Diffuse){
+        Vector3 color = {Real(0), Real(0), Real(0)};
+        for(auto& l:scene.lights){
+            Real d = length(l.position - v.pos);
+            Vector3 light_dir = normalize(l.position - v.pos);
+            Ray shadow_ray = {v.pos, light_dir, epsilon, (1 - epsilon) * d};
+            if(!scene_occluded(scene, shadow_ray)){
+                const Vector3& Kd = scene.materials[v.material_id].color;
+                color += Kd * max(dot(n, light_dir), Real(0)) * l.intensity / (c_PI * d * d);
+            }
+        }
+        return color;
+    }else if(scene.materials[v.material_id].type == MaterialType::Mirror){
+        Ray reflect_ray = {v.pos, r.dir - 2*dot(r.dir, n) * n, epsilon, infinity<Real>()};
+        return scene.materials[v.material_id].color * trace_ray(scene, reflect_ray);
+    }else{
+        return {0.5, 0.5, 0.5};
+    }
 }
 
 
@@ -296,8 +322,46 @@ Scene hw1_scene_4{
     }
 };
 
+Scene hw1_scene_own{
+    Camera{
+        Vector3{0, 0,  0}, // lookfrom
+        Vector3{0, 0, -1}, // lookat
+        Vector3{0, 1,  0}, // up
+        39.146253          // vfov
+    },
+    std::vector<Sphere>{
+        {Vector3{    0.0, -100.28,   -1.08}, 100.0, 0},
+        {Vector3{    0.0,  100.28,   -1.08}, 100.0, 0},
+        {Vector3{ -100.28,    0.0,   -1.08}, 100.0, 1},
+        {Vector3{  100.28,    0.0,   -1.08}, 100.0, 2},
+        {Vector3{    0.0,     0.0, -101.36}, 100.0, 0},
+
+        {Vector3{    0.144338,   -0.144338,   -0.935662},   0.056250,  3},
+        {Vector3{    0.203347,   -0.017791,   -1.062209},   0.051085,  3},
+        {Vector3{    0.167209,   0.117081,   -1.197081},   0.044127,   3},
+        {Vector3{    0.052831,   0.197169,   -1.277169},   0.046875,   3},
+        {Vector3{    -0.086267,   0.184999,   -1.264999},   0.054788,  3},
+        {Vector3{    -0.184999,   0.086267,   -1.166267},   0.054788,  3},
+        {Vector3{    -0.197169,   -0.052831,   -1.027169},   0.046875, 3},
+        {Vector3{    -0.117081,   -0.167209,   -0.912791},   0.044127, 3},
+        {Vector3{    0.017791,   -0.203347,   -0.876653},   0.051085,  3}
+    },
+    std::vector<Material>{
+        {MaterialType::Diffuse, Vector3{0.4, 0.4, 0.4}},
+        {MaterialType::Diffuse, Vector3{0.5, 0.0, 0.0}},
+        {MaterialType::Diffuse, Vector3{0.0, 0.5, 0.0}},
+        {MaterialType::Mirror, Vector3{0.8, 0.8, 0.8}}
+    },
+    std::vector<PointLight>{
+        {Vector3{0.75*0.8962694, 0.75*0.2704975, 0.75*0.0998988}, Vector3{0.0, 0.15, -1.08}},
+        {Vector3{0.20*0.8962694, 0.20*0.2704975, 0.20*0.0998988}, Vector3{-0.06, 0.0, -0.9}},
+        {Vector3{0.20*0.8962694, 0.20*0.2704975, 0.20*0.0998988}, Vector3{0.02, 0.0, -0.9}}
+    }
+};
+
+
 Scene hw1_scenes[] = {
-    hw1_scene_0, hw1_scene_1, hw1_scene_2, hw1_scene_3, hw1_scene_4
+    hw1_scene_0, hw1_scene_1, hw1_scene_2, hw1_scene_3, hw1_scene_4, hw1_scene_own
 };
 
 }

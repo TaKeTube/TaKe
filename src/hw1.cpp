@@ -264,6 +264,8 @@ Image3 hw_1_6(const std::vector<std::string> &params) {
     Vector3 u = normalize(cross(cam.up, w));
     Vector3 v = cross(w, u);
 
+    std::mt19937 rng{std::random_device{}()};
+
     for (int y = 0; y < img.height; y++) {
         for (int x = 0; x < img.width; x++) {
             Vector3 color_sum = {0, 0, 0};
@@ -324,6 +326,35 @@ Image3 hw_1_7(const std::vector<std::string> &params) {
 
     Image3 img(640 /* width */, 480 /* height */);
 
+    Scene scene = hw1_scenes[scene_id];
+    Camera cam = scene.camera;
+
+    Real theta = cam.vfov / 180 * c_PI;
+    Real h = tan(theta/2);
+    Real viewport_height = 2.0 * h;
+    Real viewport_width = viewport_height / img.height * img.width;
+
+    Vector3 w = normalize(cam.lookfrom - cam.lookat);
+    Vector3 u = normalize(cross(cam.up, w));
+    Vector3 v = cross(w, u);
+
+    std::mt19937 rng{std::random_device{}()};
+
+    for (int y = 0; y < img.height; y++) {
+        for (int x = 0; x < img.width; x++) {
+            Vector3 color = {0, 0, 0};
+            for (int i = 0; i < spp; i++){
+                Ray r = {cam.lookfrom, 
+                        u * ((x + random_double(rng)) / img.width - Real(0.5)) * viewport_width +
+                        v * ((y + random_double(rng)) / img.height - Real(0.5)) * viewport_height -
+                        w,
+                        epsilon,
+                        infinity<Real>()};
+                color += trace_ray(scene, r);
+            }
+            img(x, img.height - y - 1) = color / Real(spp);
+        }
+    }
     return img;
 }
 
@@ -347,7 +378,44 @@ Image3 hw_1_8(const std::vector<std::string> &params) {
     UNUSED(spp); // avoid unused warning
     // Your scene is hw1_scenes[scene_id]
 
-    Image3 img(1280 /* width */, 960 /* height */);
+    Image3 img(1280 /* width */, scene_id == 5 ? 1280 : 960 /* height */);
 
+    Scene scene = hw1_scenes[scene_id];
+    Camera cam = scene.camera;
+
+    Real theta = cam.vfov / 180 * c_PI;
+    Real h = tan(theta/2);
+    Real viewport_height = 2.0 * h;
+    Real viewport_width = viewport_height / img.height * img.width;
+
+    Vector3 w = normalize(cam.lookfrom - cam.lookat);
+    Vector3 u = normalize(cross(cam.up, w));
+    Vector3 v = cross(w, u);
+
+    constexpr int tile_size = 16;
+    int num_tiles_x = (img.width + tile_size - 1) / tile_size;
+    int num_tiles_y = (img.height + tile_size - 1) / tile_size;
+    parallel_for([&](const Vector2i &tile) {
+        std::mt19937 rng{std::random_device{}()};
+        int x0 = tile[0] * tile_size;
+        int x1 = min(x0 + tile_size, img.width);
+        int y0 = tile[1] * tile_size;
+        int y1 = min(y0 + tile_size, img.height);
+        for (int y = y0; y < y1; y++) {
+            for (int x = x0; x < x1; x++) {
+                Vector3 color = {0, 0, 0};
+                for (int i = 0; i < spp; i++){
+                    Ray r = {cam.lookfrom, 
+                            u * ((x + random_double(rng)) / img.width - Real(0.5)) * viewport_width +
+                            v * ((y + random_double(rng)) / img.height - Real(0.5)) * viewport_height -
+                            w,
+                            epsilon,
+                            infinity<Real>()};
+                    color += trace_ray(scene, r);
+                }
+                img(x, img.height - y - 1) = color / Real(spp);
+            }
+        }
+    }, Vector2i(num_tiles_x, num_tiles_y));
     return img;
 }
