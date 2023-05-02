@@ -10,6 +10,14 @@
 namespace hw2 {
     const Real epsilon = 1e-4;
 
+    inline double random_double(std::mt19937 &rng) {
+        return std::uniform_real_distribution<double>{0.0, 1.0}(rng);
+    }
+
+    inline int random_int(int min, int max, std::mt19937 &rng) {
+        return static_cast<int>(min + (max - min) * random_double(rng));
+    }
+
     enum class MaterialType {
         Diffuse,
         Mirror
@@ -121,106 +129,6 @@ namespace hw2 {
         return ret;
     }
 
-    // Scene
-    struct Scene {
-        Scene();
-        Scene(const ParsedScene &scene);
-
-        Camera camera;
-        int width, height;
-        std::vector<Shape> shapes;
-        std::vector<Material> materials;
-        std::vector<PointLight> lights;
-        Vector3 background_color;
-        int samples_per_pixel;
-        std::vector<TriangleMesh> meshes;
-    };
-
-    Camera from_parsed_camera(const ParsedCamera &pc) {
-        Camera c;
-        c.lookat = pc.lookat;
-        c.lookfrom = pc.lookfrom;
-        c.up = pc.up;
-        c.vfov = pc.vfov;
-        return c;
-    }
-
-    Scene::Scene(){}
-
-    Scene::Scene(const ParsedScene &scene) : camera(from_parsed_camera(scene.camera)),
-                                             width(scene.camera.width),
-                                             height(scene.camera.height),
-                                             background_color(scene.background_color),
-                                             samples_per_pixel(scene.samples_per_pixel)
-    {
-        // Extract triangle meshes from the parsed scene.
-        int tri_mesh_count = 0;
-        for (const ParsedShape &parsed_shape : scene.shapes)
-        {
-            if (std::get_if<ParsedTriangleMesh>(&parsed_shape))
-            {
-                tri_mesh_count++;
-            }
-        }
-        meshes.resize(tri_mesh_count);
-        // Extract the shapes
-        tri_mesh_count = 0;
-        for (int i = 0; i < (int)scene.shapes.size(); i++)
-        {
-            const ParsedShape &parsed_shape = scene.shapes[i];
-            if (auto *sph = std::get_if<ParsedSphere>(&parsed_shape))
-            {
-                shapes.push_back(
-                    Sphere{{sph->material_id, sph->area_light_id},
-                           sph->position,
-                           sph->radius});
-            }
-            else if (auto *parsed_mesh = std::get_if<ParsedTriangleMesh>(&parsed_shape))
-            {
-                meshes[tri_mesh_count] = TriangleMesh{
-                    {parsed_mesh->material_id, parsed_mesh->area_light_id},
-                    parsed_mesh->positions,
-                    parsed_mesh->indices,
-                    parsed_mesh->normals,
-                    parsed_mesh->uvs};
-                // Extract all the individual triangles
-                for (int face_index = 0; face_index < (int)parsed_mesh->indices.size(); face_index++)
-                {
-                    shapes.push_back(Triangle{face_index, &meshes[tri_mesh_count]});
-                }
-                tri_mesh_count++;
-            }
-            else
-            {
-                assert(false);
-            }
-        }
-        // Copy the materials
-        for (const ParsedMaterial &parsed_mat : scene.materials)
-        {
-            if (auto *diffuse = std::get_if<ParsedDiffuse>(&parsed_mat))
-            {
-                // We assume the reflectance is always RGB for now.
-                materials.push_back(Material{MaterialType::Diffuse, std::get<Vector3>(diffuse->reflectance)});
-            }
-            else if (auto *mirror = std::get_if<ParsedMirror>(&parsed_mat))
-            {
-                // We assume the reflectance is always RGB for now.
-                materials.push_back(Material{MaterialType::Mirror, std::get<Vector3>(mirror->reflectance)});
-            }
-            else
-            {
-                assert(false);
-            }
-        }
-        for (const ParsedLight &parsed_light : scene.lights)
-        {
-            // We assume all lights are point lights for now.
-            ParsedPointLight point_light = std::get<ParsedPointLight>(parsed_light);
-            lights.push_back(PointLight{point_light.intensity, point_light.position});
-        }
-    }
-
     // Intersection
     struct Intersection {
         Vector3 pos;
@@ -310,34 +218,231 @@ namespace hw2 {
         }
     }
 
-    std::optional<Intersection> scene_intersect(const Scene& scene, const Ray& r){
-        Real t = infinity<Real>();
-        Intersection v = {};
-        for(auto& s:scene.shapes){
-            std::optional<Intersection> v_ = std::visit(intersect_op{r}, s);
-            if(v_ && v_->t < t){
-                t = v_->t;
-                v = *v_;
+    // BVH
+    struct BVHNode {
+        BVHNode();
+        BVHNode(const std::vector<Shape*>& src_shapes, std::mt19937 &rng)
+            : BVHNode(src_shapes, 0, src_shapes.size(), rng)
+        {}
+        BVHNode(const std::vector<Shape*>& src_shapes, size_t start, size_t end, std::mt19937 &rng);
+
+        std::optional<Intersection> intersect(const Ray& r) const;
+
+        std::unique_ptr<BVHNode> left;
+        std::unique_ptr<BVHNode> right;
+        Shape *shape = nullptr;
+        AABB box;
+    };
+
+    inline bool box_compare(const Shape* a, const Shape* b, int axis) {
+        AABB abox = std::visit(get_aabb_op{}, *a);
+        AABB bbox = std::visit(get_aabb_op{}, *b);
+        return abox.pmin[axis] < bbox.pmin[axis];
+    }
+
+
+    bool box_x_compare (const Shape* a, const Shape* b) {
+        return box_compare(a, b, 0);
+    }
+
+    bool box_y_compare (const Shape* a, const Shape* b) {
+        return box_compare(a, b, 1);
+    }
+
+    bool box_z_compare (const Shape* a, const Shape* b) {
+        return box_compare(a, b, 2);
+    }
+
+    BVHNode::BVHNode(
+        const std::vector<Shape*>& src_shapes,
+        size_t start, size_t end,
+        std::mt19937 &rng
+    ) {
+        auto shapes = src_shapes;
+
+        int axis = random_int(0,2,rng);
+        auto comparator = (axis == 0) ? box_x_compare
+                        : (axis == 1) ? box_y_compare
+                                    : box_z_compare;
+
+        size_t object_span = end - start;
+
+        if (object_span == 1) {
+            shape = shapes[start];
+            box = std::visit(get_aabb_op{}, *shape);
+            return;
+        } else if (object_span == 2) {
+            if (comparator(shapes[start], shapes[start+1])) {
+                left = std::make_unique<BVHNode>(shapes, start, start+1, rng);
+                right = std::make_unique<BVHNode>(shapes, start+1, start+2, rng);
+            } else {
+                left = std::make_unique<BVHNode>(shapes, start+1, start+2, rng);
+                right = std::make_unique<BVHNode>(shapes, start, start+1, rng);
+            }
+            box = Union(left->box, right->box);
+            return;
+        } else {
+            std::sort(shapes.begin() + start, shapes.begin() + end, comparator);
+            auto mid = start + object_span/2;
+            left = std::make_unique<BVHNode>(shapes, start, mid, rng);
+            right = std::make_unique<BVHNode>(shapes, mid, end, rng);
+        }
+
+        box = Union(left->box, right->box);
+    }
+
+    std::optional<Intersection> BVHNode::intersect(const Ray& r) const{
+        if (!box.hit(r))
+            return {};
+
+        if(!(shape == nullptr)){
+            return std::visit(intersect_op{r}, *shape);
+        }
+
+        auto hit_left = left == nullptr ? std::nullopt : left->intersect(r);
+        auto hit_right = right == nullptr ? std::nullopt : right->intersect(r);
+
+        if(hit_left && hit_right)
+            return hit_left->t < hit_right->t ? hit_left : hit_right;
+        else
+            return hit_left ? hit_left : hit_right;
+    }
+
+    // Scene
+    struct Scene {
+        Scene();
+        Scene(const ParsedScene &scene);
+
+        Camera camera;
+        int width, height;
+        std::vector<Shape> shapes;
+        std::vector<Material> materials;
+        std::vector<PointLight> lights;
+        Vector3 background_color;
+        int samples_per_pixel;
+        std::vector<TriangleMesh> meshes;
+        std::unique_ptr<BVHNode> bvh = nullptr;
+    };
+
+    Camera from_parsed_camera(const ParsedCamera &pc) {
+        Camera c;
+        c.lookat = pc.lookat;
+        c.lookfrom = pc.lookfrom;
+        c.up = pc.up;
+        c.vfov = pc.vfov;
+        return c;
+    }
+
+    Scene::Scene(){}
+
+    Scene::Scene(const ParsedScene &scene) : camera(from_parsed_camera(scene.camera)),
+                                             width(scene.camera.width),
+                                             height(scene.camera.height),
+                                             background_color(scene.background_color),
+                                             samples_per_pixel(scene.samples_per_pixel)
+    {
+        // Extract triangle meshes from the parsed scene.
+        int tri_mesh_count = 0;
+        for (const ParsedShape &parsed_shape : scene.shapes)
+        {
+            if (std::get_if<ParsedTriangleMesh>(&parsed_shape))
+            {
+                tri_mesh_count++;
             }
         }
-        if(t < infinity<Real>())
-            return v;
-        else
-            return {};
+        meshes.resize(tri_mesh_count);
+        // Extract the shapes
+        tri_mesh_count = 0;
+        for (int i = 0; i < (int)scene.shapes.size(); i++)
+        {
+            const ParsedShape &parsed_shape = scene.shapes[i];
+            if (auto *sph = std::get_if<ParsedSphere>(&parsed_shape))
+            {
+                shapes.push_back(
+                    Sphere{{sph->material_id, sph->area_light_id},
+                           sph->position,
+                           sph->radius});
+            }
+            else if (auto *parsed_mesh = std::get_if<ParsedTriangleMesh>(&parsed_shape))
+            {
+                meshes[tri_mesh_count] = TriangleMesh{
+                    {parsed_mesh->material_id, parsed_mesh->area_light_id},
+                    parsed_mesh->positions,
+                    parsed_mesh->indices,
+                    parsed_mesh->normals,
+                    parsed_mesh->uvs};
+                // Extract all the individual triangles
+                for (int face_index = 0; face_index < (int)parsed_mesh->indices.size(); face_index++)
+                {
+                    shapes.push_back(Triangle{face_index, &meshes[tri_mesh_count]});
+                }
+                tri_mesh_count++;
+            }
+            else
+            {
+                assert(false);
+            }
+        }
+        // Copy the materials
+        for (const ParsedMaterial &parsed_mat : scene.materials)
+        {
+            if (auto *diffuse = std::get_if<ParsedDiffuse>(&parsed_mat))
+            {
+                // We assume the reflectance is always RGB for now.
+                materials.push_back(Material{MaterialType::Diffuse, std::get<Vector3>(diffuse->reflectance)});
+            }
+            else if (auto *mirror = std::get_if<ParsedMirror>(&parsed_mat))
+            {
+                // We assume the reflectance is always RGB for now.
+                materials.push_back(Material{MaterialType::Mirror, std::get<Vector3>(mirror->reflectance)});
+            }
+            else
+            {
+                assert(false);
+            }
+        }
+        for (const ParsedLight &parsed_light : scene.lights)
+        {
+            // We assume all lights are point lights for now.
+            ParsedPointLight point_light = std::get<ParsedPointLight>(parsed_light);
+            lights.push_back(PointLight{point_light.intensity, point_light.position});
+        }
+    }
+
+    std::optional<Intersection> scene_intersect(const Scene& scene, const Ray& r){
+        if(scene.bvh){
+            return scene.bvh->intersect(r);
+        }else{
+            // Traverse
+            Real t = infinity<Real>();
+            Intersection v = {};
+            for(auto& s:scene.shapes){
+                std::optional<Intersection> v_ = std::visit(intersect_op{r}, s);
+                if(v_ && v_->t < t){
+                    t = v_->t;
+                    v = *v_;
+                }
+            }
+            if(t < infinity<Real>())
+                return v;
+            else
+                return {};
+        }
     }
 
     bool scene_occluded(const Scene& scene, const Ray& r){
-        Real t = infinity<Real>();
-        for(auto& s:scene.shapes){
-            std::optional<Intersection> v_ = std::visit(intersect_op{r}, s);
-            if(v_ && v_->t < t)
-                t = v_->t;
+        if(scene.bvh){
+            std::optional<Intersection> v_ = scene.bvh->intersect(r);
+            return v_ ? true : false;
+        }else{
+            Real t = infinity<Real>();
+            for(auto& s:scene.shapes){
+                std::optional<Intersection> v_ = std::visit(intersect_op{r}, s);
+                if(v_ && v_->t < t)
+                    t = v_->t;
+            }
+            return t < infinity<Real>();
         }
-        return t < infinity<Real>();
-    }
-
-    inline double random_double(std::mt19937 &rng) {
-        return std::uniform_real_distribution<double>{0.0, 1.0}(rng);
     }
 
     Vector3 trace_ray(const Scene& scene, const Ray& r){
