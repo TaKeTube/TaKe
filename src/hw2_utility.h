@@ -5,6 +5,7 @@
 #include <random>
 
 #include "vector.h"
+#include "parse_scene.h"
 
 namespace hw2 {
     const Real epsilon = 1e-4;
@@ -59,6 +60,9 @@ namespace hw2 {
 
     // Scene
     struct Scene {
+        Scene();
+        Scene(const ParsedScene &scene);
+
         Camera camera;
         int width, height;
         std::vector<Shape> shapes;
@@ -68,6 +72,91 @@ namespace hw2 {
         int samples_per_pixel;
         std::vector<TriangleMesh> meshes;
     };
+
+    Camera from_parsed_camera(const ParsedCamera &pc) {
+        Camera c;
+        c.lookat = pc.lookat;
+        c.lookfrom = pc.lookfrom;
+        c.up = pc.up;
+        c.vfov = pc.vfov;
+        return c;
+    }
+
+    Scene::Scene(){}
+
+    Scene::Scene(const ParsedScene &scene) : camera(from_parsed_camera(scene.camera)),
+                                             width(scene.camera.width),
+                                             height(scene.camera.height),
+                                             background_color(scene.background_color),
+                                             samples_per_pixel(scene.samples_per_pixel)
+    {
+        // Extract triangle meshes from the parsed scene.
+        int tri_mesh_count = 0;
+        for (const ParsedShape &parsed_shape : scene.shapes)
+        {
+            if (std::get_if<ParsedTriangleMesh>(&parsed_shape))
+            {
+                tri_mesh_count++;
+            }
+        }
+        meshes.resize(tri_mesh_count);
+        // Extract the shapes
+        tri_mesh_count = 0;
+        for (int i = 0; i < (int)scene.shapes.size(); i++)
+        {
+            const ParsedShape &parsed_shape = scene.shapes[i];
+            if (auto *sph = std::get_if<ParsedSphere>(&parsed_shape))
+            {
+                shapes.push_back(
+                    Sphere{{sph->material_id, sph->area_light_id},
+                           sph->position,
+                           sph->radius});
+            }
+            else if (auto *parsed_mesh = std::get_if<ParsedTriangleMesh>(&parsed_shape))
+            {
+                meshes[tri_mesh_count] = TriangleMesh{
+                    {parsed_mesh->material_id, parsed_mesh->area_light_id},
+                    parsed_mesh->positions,
+                    parsed_mesh->indices,
+                    parsed_mesh->normals,
+                    parsed_mesh->uvs};
+                // Extract all the individual triangles
+                for (int face_index = 0; face_index < (int)parsed_mesh->indices.size(); face_index++)
+                {
+                    shapes.push_back(Triangle{face_index, &meshes[tri_mesh_count]});
+                }
+                tri_mesh_count++;
+            }
+            else
+            {
+                assert(false);
+            }
+        }
+        // Copy the materials
+        for (const ParsedMaterial &parsed_mat : scene.materials)
+        {
+            if (auto *diffuse = std::get_if<ParsedDiffuse>(&parsed_mat))
+            {
+                // We assume the reflectance is always RGB for now.
+                materials.push_back(Material{MaterialType::Diffuse, std::get<Vector3>(diffuse->reflectance)});
+            }
+            else if (auto *mirror = std::get_if<ParsedMirror>(&parsed_mat))
+            {
+                // We assume the reflectance is always RGB for now.
+                materials.push_back(Material{MaterialType::Mirror, std::get<Vector3>(mirror->reflectance)});
+            }
+            else
+            {
+                assert(false);
+            }
+        }
+        for (const ParsedLight &parsed_light : scene.lights)
+        {
+            // We assume all lights are point lights for now.
+            ParsedPointLight point_light = std::get<ParsedPointLight>(parsed_light);
+            lights.push_back(PointLight{point_light.intensity, point_light.position});
+        }
+    }
 
     // Ray
     struct Ray {
@@ -153,8 +242,9 @@ namespace hw2 {
         // At this stage we can compute t to find out where the intersection point is on the line.
         Real t = f * dot(e2, q);
 
-        if (t > epsilon) // ray intersection
-        {
+        if (t < r.tmin || r.tmax < t) // ray intersection
+            return {};
+        else {
             Intersection inter;
             inter.t = t;
             inter.pos = r.origin + r.dir * t;
@@ -163,8 +253,6 @@ namespace hw2 {
             inter.uv = Vector2(u, v);
             return inter;
         }
-        else // This means that there is a line intersection but not a ray intersection.
-            return {};
     }
 
     std::optional<Intersection> scene_intersect(const Scene& scene, const Ray& r){
@@ -199,7 +287,7 @@ namespace hw2 {
 
     Vector3 trace_ray(const Scene& scene, const Ray& r){
         std::optional<Intersection> v_ = scene_intersect(scene, r);
-        if(!v_) return {0.5, 0.5, 0.5};
+        if(!v_) return scene.background_color;
         Intersection v = *v_;
         Vector3 n = dot(r.dir, v.normal) > 0 ? -v.normal : v.normal;
 
@@ -219,7 +307,7 @@ namespace hw2 {
             Ray reflect_ray = {v.pos, r.dir - 2*dot(r.dir, n) * n, epsilon, infinity<Real>()};
             return scene.materials[v.material_id].color * trace_ray(scene, reflect_ray);
         }else{
-            return {0.5, 0.5, 0.5};
+            return scene.background_color;
         }
     }
 }

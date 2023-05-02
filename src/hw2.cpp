@@ -50,43 +50,43 @@ Image3 hw_2_1(const std::vector<std::string> &params) {
     //     std::vector<TriangleMesh> meshes;
     // };
 
-    Scene scene = {
-        Camera {
-            Vector3{0, 0,  0}, // lookfrom
-            Vector3{0, 0, -1}, // lookat
-            Vector3{0, 1,  0}, // up
-            45                 // vfov
-        },
-        img.width, img.height,
-        std::vector<Shape>{
-            Triangle{0, nullptr}
-        },
-        std::vector<Material>{
-            Material{MaterialType::Diffuse, Vector3{0.75, 0.25, 0.25}}
-        },
-        std::vector<PointLight>{
-            PointLight{Vector3{100, 100, 100}, Vector3{5, 5, -2}}
-        },
-        {0.5, 0.5, 0.5},
-        spp,
-        std::vector<TriangleMesh>{
-            // struct TriangleMesh : public ShapeBase {
-            //     std::vector<Vector3> positions;
-            //     std::vector<Vector3i> indices;
-            //     std::vector<Vector3> normals;
-            //     std::vector<Vector2> uvs;
-            // };
-            TriangleMesh{
-                -1, -1,
-                {p0, p1, p2},
-                {{0, 1, 2}},
-                {{}, {}, {}},
-                {{}, {}, {}}
-            }
+    Scene scene;
+    scene.camera = Camera {
+        Vector3{0, 0,  0}, // lookfrom
+        Vector3{0, 0, -1}, // lookat
+        Vector3{0, 1,  0}, // up
+        45                 // vfov
+    };
+    scene.height = img.height;
+    scene.width = img.width;
+    scene.materials = std::vector<Material>{
+        Material{MaterialType::Diffuse, Vector3{0.75, 0.25, 0.25}}
+    };
+    scene.lights = std::vector<PointLight>{
+        PointLight{Vector3{100, 100, 100}, Vector3{5, 5, -2}}
+    };
+    scene.background_color = {0.5, 0.5, 0.5};
+    scene.samples_per_pixel = spp;
+    scene.meshes = std::vector<TriangleMesh>{
+        // struct TriangleMesh : public ShapeBase {
+        //     std::vector<Vector3> positions;
+        //     std::vector<Vector3i> indices;
+        //     std::vector<Vector3> normals;
+        //     std::vector<Vector2> uvs;
+        // };
+        TriangleMesh{
+            -1, -1,
+            {p0, p1, p2},
+            {{0, 1, 2}},
+            {{}, {}, {}},
+            {{}, {}, {}}
         }
     };
-    auto &tri = std::get<Triangle>(scene.shapes.at(0));
-    tri.mesh = &scene.meshes.at(0);
+
+    TriangleMesh &mesh = scene.meshes.at(0);
+    for (int face_index = 0; face_index < (int)mesh.indices.size(); face_index++) {
+        scene.shapes.push_back(Triangle{face_index, &mesh});   
+    }
 
     Camera &cam = scene.camera;
 
@@ -174,40 +174,36 @@ Image3 hw_2_2(const std::vector<std::string> &params) {
     //     int samples_per_pixel;
     //     std::vector<TriangleMesh> meshes;
     // };
-
-    Scene scene = {
-        Camera {
-            Vector3{0, 0,  0}, // lookfrom
-            Vector3{0, 0, -1}, // lookat
-            Vector3{0, 1,  0}, // up
-            45                 // vfov
-        },
-        img.width, img.height,
-        std::vector<Shape>{
-            // reserved
-        },
-        std::vector<Material>{
-            Material{MaterialType::Diffuse, Vector3{0.75, 0.25, 0.25}}
-        },
-        std::vector<PointLight>{
-            PointLight{Vector3{100, 100, 100}, Vector3{5, 5, -2}}
-        },
-        {0.5, 0.5, 0.5},
-        spp,
-        std::vector<TriangleMesh>{
-            // struct TriangleMesh : public ShapeBase {
-            //     std::vector<Vector3> positions;
-            //     std::vector<Vector3i> indices;
-            //     std::vector<Vector3> normals;
-            //     std::vector<Vector2> uvs;
-            // };
-            TriangleMesh{
-                -1, -1,
-                positions,
-                indices,
-                {},
-                {}
-            }
+    Scene scene;
+    scene.camera = Camera {
+        Vector3{0, 0,  0}, // lookfrom
+        Vector3{0, 0, -1}, // lookat
+        Vector3{0, 1,  0}, // up
+        45                 // vfov
+    };
+    scene.height = img.height;
+    scene.width = img.width;
+    scene.materials = std::vector<Material>{
+        Material{MaterialType::Diffuse, Vector3{0.75, 0.25, 0.25}}
+    };
+    scene.lights = std::vector<PointLight>{
+        PointLight{Vector3{100, 100, 100}, Vector3{5, 5, -2}}
+    };
+    scene.background_color = {0.5, 0.5, 0.5};
+    scene.samples_per_pixel = spp;
+    scene.meshes = std::vector<TriangleMesh>{
+        // struct TriangleMesh : public ShapeBase {
+        //     std::vector<Vector3> positions;
+        //     std::vector<Vector3i> indices;
+        //     std::vector<Vector3> normals;
+        //     std::vector<Vector2> uvs;
+        // };
+        TriangleMesh{
+            -1, -1,
+            positions,
+            indices,
+            {},
+            {}
         }
     };
     TriangleMesh &mesh = scene.meshes.at(0);
@@ -270,11 +266,52 @@ Image3 hw_2_3(const std::vector<std::string> &params) {
 
     Timer timer;
     tick(timer);
-    ParsedScene scene = parse_scene(params[0]);
+    ParsedScene pscene = parse_scene(params[0]);
     std::cout << "Scene parsing done. Took " << tick(timer) << " seconds." << std::endl;
-    std::cout << scene << std::endl;
+    std::cout << pscene << std::endl;
 
-    return Image3(0, 0);
+    Scene scene(pscene);
+
+    Image3 img(scene.width, scene.height);
+
+    Camera &cam = scene.camera;
+
+    Real theta = cam.vfov / 180 * c_PI;
+    Real h = tan(theta/2);
+    Real viewport_height = 2.0 * h;
+    Real viewport_width = viewport_height / img.height * img.width;
+
+    Vector3 w = normalize(cam.lookfrom - cam.lookat);
+    Vector3 u = normalize(cross(cam.up, w));
+    Vector3 v = cross(w, u);
+
+    constexpr int tile_size = 16;
+    int num_tiles_x = (img.width + tile_size - 1) / tile_size;
+    int num_tiles_y = (img.height + tile_size - 1) / tile_size;
+    parallel_for([&](const Vector2i &tile) {
+        std::mt19937 rng{std::random_device{}()};
+        int x0 = tile[0] * tile_size;
+        int x1 = min(x0 + tile_size, img.width);
+        int y0 = tile[1] * tile_size;
+        int y1 = min(y0 + tile_size, img.height);
+        for (int y = y0; y < y1; y++) {
+            for (int x = x0; x < x1; x++) {
+                Vector3 color = {0, 0, 0};
+                for (int i = 0; i < scene.samples_per_pixel; i++){
+                    Ray r = {cam.lookfrom, 
+                            u * ((x + random_double(rng)) / img.width - Real(0.5)) * viewport_width +
+                            v * ((y + random_double(rng)) / img.height - Real(0.5)) * viewport_height -
+                            w,
+                            epsilon,
+                            infinity<Real>()};
+                    color += trace_ray(scene, r);
+                }
+                img(x, img.height - y - 1) = color / Real(scene.samples_per_pixel);
+            }
+        }
+    }, Vector2i(num_tiles_x, num_tiles_y));
+
+    return img;
 }
 
 Image3 hw_2_4(const std::vector<std::string> &params) {
