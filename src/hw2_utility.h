@@ -8,7 +8,7 @@
 #include "parse_scene.h"
 
 namespace hw2 {
-    const Real epsilon = 1e-4;
+    const Real epsilon = 1e-7;
 
     inline double random_double(std::mt19937 &rng) {
         return std::uniform_real_distribution<double>{0.0, 1.0}(rng);
@@ -69,6 +69,19 @@ namespace hw2 {
             return true;
         }
 
+        Vector3 Diagonal() const { return pmax - pmin; }
+        int maxExtent() const
+        {
+            Vector3 d = Diagonal();
+            if (d.x > d.y && d.x > d.z)
+                return 0;
+            else if (d.y > d.z)
+                return 1;
+            else
+                return 2;
+        }
+        Vector3 Centroid() { return 0.5 * pmin + 0.5 * pmax; }
+
         Vector3 pmin;
         Vector3 pmax;
     };
@@ -77,6 +90,14 @@ namespace hw2 {
         AABB ret;
         ret.pmin = min(b1.pmin, b2.pmin);
         ret.pmax = max(b1.pmax, b2.pmax);
+        return ret;
+    }
+
+    inline AABB Union(const AABB& b, const Vector3& p)
+    {
+        AABB ret;
+        ret.pmin = min(b.pmin, p);
+        ret.pmax = max(b.pmax, p);
         return ret;
     }
 
@@ -221,12 +242,13 @@ namespace hw2 {
     // BVH
     struct BVHNode {
         BVHNode();
-        BVHNode(const std::vector<Shape*>& src_shapes, std::mt19937 &rng)
+        BVHNode(std::vector<Shape*>& src_shapes, std::mt19937 &rng)
             : BVHNode(src_shapes, 0, src_shapes.size(), rng)
         {}
-        BVHNode(const std::vector<Shape*>& src_shapes, size_t start, size_t end, std::mt19937 &rng);
+        BVHNode(std::vector<Shape*>& src_shapes, size_t start, size_t end, std::mt19937 &rng);
 
         std::optional<Intersection> intersect(const Ray& r) const;
+        bool intersect(const Ray& r, Intersection& v) const;
 
         std::unique_ptr<BVHNode> left;
         std::unique_ptr<BVHNode> right;
@@ -254,13 +276,17 @@ namespace hw2 {
     }
 
     BVHNode::BVHNode(
-        const std::vector<Shape*>& src_shapes,
+        std::vector<Shape*>& shapes,
         size_t start, size_t end,
         std::mt19937 &rng
     ) {
-        auto shapes = src_shapes;
+        // int axis = random_int(0, 2, rng);
+        AABB centroidBounds;
+        for (int i = start; i < end; ++i)
+            centroidBounds =
+                Union(centroidBounds, std::visit(get_aabb_op{}, *shapes[i]).Centroid());
+        int axis = centroidBounds.maxExtent();
 
-        int axis = random_int(0,2,rng);
         auto comparator = (axis == 0) ? box_x_compare
                         : (axis == 1) ? box_y_compare
                                     : box_z_compare;
@@ -300,12 +326,35 @@ namespace hw2 {
         }
 
         auto hit_left = left == nullptr ? std::nullopt : left->intersect(r);
-        auto hit_right = right == nullptr ? std::nullopt : right->intersect(r);
+        Ray rr = r;
+        rr.tmax = hit_left ? hit_left->t : r.tmax;
+        auto hit_right = right == nullptr ? std::nullopt : right->intersect(rr);
 
-        if(hit_left && hit_right)
-            return hit_left->t < hit_right->t ? hit_left : hit_right;
+        if(hit_right)
+            return hit_right;
         else
-            return hit_left ? hit_left : hit_right;
+            return hit_left;
+    }
+
+    bool BVHNode::intersect(const Ray& r, Intersection& v) const {
+        if (!box.hit(r))
+            return false;
+
+        if(!(shape == nullptr)){
+            auto v_ = std::visit(intersect_op{r}, *shape);
+            if(v_){
+                v = *v_;
+                return true;
+            }
+            return false;
+        }
+
+        bool hit_left = left->intersect(r, v);
+        // Ray rr = r;
+        // rr.tmax = hit_left ? v.t : r.tmax;
+        bool hit_right = right->intersect(r, v);
+
+        return hit_left || hit_right;
     }
 
     // Scene
@@ -412,6 +461,9 @@ namespace hw2 {
     std::optional<Intersection> scene_intersect(const Scene& scene, const Ray& r){
         if(scene.bvh){
             return scene.bvh->intersect(r);
+            // Intersection v;
+            // scene.bvh->intersect(r, v);
+            // return v;
         }else{
             // Traverse
             Real t = infinity<Real>();
@@ -434,6 +486,8 @@ namespace hw2 {
         if(scene.bvh){
             std::optional<Intersection> v_ = scene.bvh->intersect(r);
             return v_ ? true : false;
+            // Intersection v;
+            // return scene.bvh->intersect(r, v);
         }else{
             Real t = infinity<Real>();
             for(auto& s:scene.shapes){

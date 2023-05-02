@@ -3,6 +3,7 @@
 #include "print_scene.h"
 #include "timer.h"
 #include "parallel.h"
+#include "progressreporter.h"
 #include "hw2_utility.h"
 
 using namespace hw2;
@@ -389,6 +390,7 @@ Image3 hw_2_5(const std::vector<std::string> &params) {
     }
 
     Timer timer;
+    std::cout << "Parsing and constructing scene " << params[0] << "." << std::endl;
     tick(timer);
     ParsedScene pscene = parse_scene(params[0]);
     std::cout << "Scene parsing done. Took " << tick(timer) << " seconds." << std::endl;
@@ -410,17 +412,22 @@ Image3 hw_2_5(const std::vector<std::string> &params) {
     Vector3 v = cross(w, u);
 
     // Build BVH
+    std::cout << "Building BVH..." << std::endl;
+    tick(timer);
     std::mt19937 bvh_rng{std::random_device{}()};
     std::vector<Shape*> shape_ptrs;
     for(auto& s : scene.shapes)
         shape_ptrs.push_back(&s);
     scene.bvh = std::make_unique<BVHNode>(shape_ptrs, bvh_rng);
-
-    std::cout << "sdsdsd" << std::endl;
+    std::cout << "Finish building BVH. Took " << tick(timer) << " seconds." << std::endl;
 
     constexpr int tile_size = 16;
     int num_tiles_x = (img.width + tile_size - 1) / tile_size;
     int num_tiles_y = (img.height + tile_size - 1) / tile_size;
+    ProgressReporter reporter(num_tiles_x * num_tiles_y);
+    
+    std::cout << "Rendering..." << std::endl;
+    tick(timer);
     parallel_for([&](const Vector2i &tile) {
         std::mt19937 rng{std::random_device{}()};
         int x0 = tile[0] * tile_size;
@@ -442,7 +449,9 @@ Image3 hw_2_5(const std::vector<std::string> &params) {
                 img(x, img.height - y - 1) = color / Real(scene.samples_per_pixel);
             }
         }
+        reporter.update(1);
     }, Vector2i(num_tiles_x, num_tiles_y));
+    std::cout << "Finish building rendering. Took " << tick(timer) << " seconds." << std::endl;
 
     return img;
 }
