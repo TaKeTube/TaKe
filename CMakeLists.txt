@@ -30,6 +30,7 @@ set(SRCS src/3rdparty/miniz.h
          src/hw1.h
          src/hw1_scenes.h
          src/hw2.h
+         src/hw2_utility.h
          src/hw3.h
          src/hw4.h
          src/image.h

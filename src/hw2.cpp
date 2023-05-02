@@ -2,6 +2,10 @@
 #include "parse_scene.h"
 #include "print_scene.h"
 #include "timer.h"
+#include "parallel.h"
+#include "hw2_utility.h"
+
+using namespace hw2;
 
 Image3 hw_2_1(const std::vector<std::string> &params) {
     // Homework 2.1: render a single triangle and outputs
@@ -35,6 +39,98 @@ Image3 hw_2_1(const std::vector<std::string> &params) {
 
     Image3 img(640 /* width */, 480 /* height */);
 
+    // struct Scene {
+    //     Camera camera;
+    //     int width, height;
+    //     std::vector<Shape> shapes;
+    //     std::vector<Material> materials;
+    //     std::vector<PointLight> lights;
+    //     Vector3 background_color;
+    //     int samples_per_pixel;
+    //     std::vector<TriangleMesh> meshes;
+    // };
+
+    Scene scene = {
+        Camera {
+            Vector3{0, 0,  0}, // lookfrom
+            Vector3{0, 0, -1}, // lookat
+            Vector3{0, 1,  0}, // up
+            45                 // vfov
+        },
+        img.width, img.height,
+        std::vector<Shape>{
+            Triangle{0, nullptr}
+        },
+        std::vector<Material>{
+            Material{MaterialType::Diffuse, Vector3{0.75, 0.25, 0.25}}
+        },
+        std::vector<PointLight>{
+            PointLight{Vector3{100, 100, 100}, Vector3{5, 5, -2}}
+        },
+        {0.5, 0.5, 0.5},
+        spp,
+        std::vector<TriangleMesh>{
+            // struct TriangleMesh : public ShapeBase {
+            //     std::vector<Vector3> positions;
+            //     std::vector<Vector3i> indices;
+            //     std::vector<Vector3> normals;
+            //     std::vector<Vector2> uvs;
+            // };
+            TriangleMesh{
+                -1, -1,
+                {p0, p1, p2},
+                {{0, 1, 2}},
+                {{}, {}, {}},
+                {{}, {}, {}}
+            }
+        }
+    };
+    auto &tri = std::get<Triangle>(scene.shapes.at(0));
+    tri.mesh = &scene.meshes.at(0);
+
+    Camera &cam = scene.camera;
+
+    Real theta = cam.vfov / 180 * c_PI;
+    Real h = tan(theta/2);
+    Real viewport_height = 2.0 * h;
+    Real viewport_width = viewport_height / img.height * img.width;
+
+    Vector3 w = normalize(cam.lookfrom - cam.lookat);
+    Vector3 u = normalize(cross(cam.up, w));
+    Vector3 v = cross(w, u);
+
+    constexpr int tile_size = 16;
+    int num_tiles_x = (img.width + tile_size - 1) / tile_size;
+    int num_tiles_y = (img.height + tile_size - 1) / tile_size;
+    parallel_for([&](const Vector2i &tile) {
+        std::mt19937 rng{std::random_device{}()};
+        int x0 = tile[0] * tile_size;
+        int x1 = min(x0 + tile_size, img.width);
+        int y0 = tile[1] * tile_size;
+        int y1 = min(y0 + tile_size, img.height);
+        for (int y = y0; y < y1; y++) {
+            for (int x = x0; x < x1; x++) {
+                Vector3 color = {0, 0, 0};
+                for (int i = 0; i < spp; i++){
+                    Ray r = {cam.lookfrom, 
+                            u * ((x + random_double(rng)) / img.width - Real(0.5)) * viewport_width +
+                            v * ((y + random_double(rng)) / img.height - Real(0.5)) * viewport_height -
+                            w,
+                            epsilon,
+                            infinity<Real>()};
+
+                    std::optional<Intersection> v_ = scene_intersect(scene, r);
+                    if(!v_) {
+                        color += scene.background_color;
+                        continue;
+                    }
+                    Intersection v = *v_;
+                    color += Vector3(1-v.uv.x-v.uv.y, v.uv.x, v.uv.y);
+                }
+                img(x, img.height - y - 1) = color / Real(spp);
+            }
+        }
+    }, Vector2i(num_tiles_x, num_tiles_y));
     return img;
 }
 
