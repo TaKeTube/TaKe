@@ -32,6 +32,46 @@ namespace hw2 {
         Vector3 color;
     };
 
+    // Ray
+    struct Ray {
+        Vector3 origin;
+        Vector3 dir;
+        Real tmin;
+        Real tmax;
+    };
+
+    // AABB
+    struct AABB {
+        AABB() {}
+        AABB(const Vector3& a, const Vector3& b) { pmin = a; pmax = b;}
+
+        bool hit(const Ray& r) const {
+            Real t_min = r.tmin;
+            Real t_max = r.tmax;
+            for (int a = 0; a < 3; a++) {
+                auto t0 = fmin((pmin[a] - r.origin[a]) / r.dir[a],
+                               (pmax[a] - r.origin[a]) / r.dir[a]);
+                auto t1 = fmax((pmin[a] - r.origin[a]) / r.dir[a],
+                               (pmax[a] - r.origin[a]) / r.dir[a]);
+                t_min = fmax(t0, t_min);
+                t_max = fmin(t1, t_max);
+                if (t_max < t_min)
+                    return false;
+            }
+            return true;
+        }
+
+        Vector3 pmin;
+        Vector3 pmax;
+    };
+
+    inline AABB Union(const AABB& b1, const AABB& b2){
+        AABB ret;
+        ret.pmin = min(b1.pmin, b2.pmin);
+        ret.pmax = max(b1.pmax, b2.pmax);
+        return ret;
+    }
+
     // Shapes
     struct ShapeBase {
         int material_id = -1;
@@ -57,6 +97,29 @@ namespace hw2 {
 
 
     using Shape = std::variant<Sphere, Triangle>;
+
+    struct get_aabb_op {
+        AABB operator()(const Sphere &s) const;
+        AABB operator()(const Triangle &s) const;
+    };
+
+    AABB get_aabb_op::operator()(const Sphere& s) const {
+        return {s.center - Vector3(s.radius, s.radius, s.radius), s.center + Vector3(s.radius, s.radius, s.radius)};
+    }
+
+    AABB get_aabb_op::operator()(const Triangle &s) const {
+        AABB ret;
+        const TriangleMesh &mesh = *s.mesh;
+        const Vector3 &indices = mesh.indices.at(s.face_index);
+
+        Vector3 v0 = mesh.positions.at(indices.x);
+        Vector3 v1 = mesh.positions.at(indices.y);
+        Vector3 v2 = mesh.positions.at(indices.z);
+        
+        ret.pmin = min(min(v0, v1), v2);
+        ret.pmax = max(max(v0, v1), v2);
+        return ret;
+    }
 
     // Scene
     struct Scene {
@@ -157,14 +220,6 @@ namespace hw2 {
             lights.push_back(PointLight{point_light.intensity, point_light.position});
         }
     }
-
-    // Ray
-    struct Ray {
-        Vector3 origin;
-        Vector3 dir;
-        Real tmin;
-        Real tmax;
-    };
 
     // Intersection
     struct Intersection {
