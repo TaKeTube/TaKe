@@ -101,6 +101,30 @@ Scene::Scene(const ParsedScene &scene) : camera(from_parsed_camera(scene.camera)
                 materials.push_back(Material{MaterialType::Mirror, texture});
             }
         }
+        else if (auto *plastic = std::get_if<ParsedPlastic>(&parsed_mat))
+        {
+            if (auto *color = std::get_if<Vector3>(&plastic->reflectance)) {
+                ConstTexture texture = {*color};
+                materials.push_back(Material{MaterialType::Plastic, texture, plastic->eta});
+            } else if (auto *color = std::get_if<ParsedImageTexture>(&plastic->reflectance)) {
+                std::string texture_name = color->filename.string();
+                int texture_id;
+                auto it = textures.image3s_map.find(texture_name);
+                if (it != textures.image3s_map.end()) {
+                    texture_id = textures.image3s_map.at(texture_name);
+                } else {
+                    texture_id = textures.image3s.size();
+                    textures.image3s_map.emplace(texture_name, texture_id);
+                    textures.image3s.push_back(imread3(color->filename));
+                }
+                ImageTexture texture = {
+                    texture_id,
+                    color->uscale, color->vscale,
+                    color->uoffset, color->voffset,
+                };
+                materials.push_back(Material{MaterialType::Plastic, texture, plastic->eta});
+            }
+        }
         else
         {
             assert(false);
@@ -204,8 +228,7 @@ Vector3 trace_ray(const Scene& scene, const Ray& r){
     std::optional<Intersection> v_ = scene_intersect(scene, r);
     if(!v_) return scene.background_color;
     Intersection v = *v_;
-    Vector3 n = dot(r.dir, v.normal) > 0 ? -v.normal : v.normal;
-    // Vector3 n = v.normal;
+    Vector3 n = dot(r.dir, v.shading_normal) > 0 ? -v.shading_normal : v.shading_normal;
 
     if(scene.materials[v.material_id].type == MaterialType::Diffuse){
         Vector3 color = {Real(0), Real(0), Real(0)};
@@ -221,8 +244,29 @@ Vector3 trace_ray(const Scene& scene, const Ray& r){
         return color;
     }else if(scene.materials[v.material_id].type == MaterialType::Mirror){
         Ray reflect_ray = {v.pos, r.dir - 2*dot(r.dir, n) * n, c_EPSILON, infinity<Real>()};
-        const Vector3& Kd = eval(scene.materials[v.material_id].reflectance, v.uv, scene.textures);
-        return Kd * trace_ray(scene, reflect_ray);
+        const Vector3& F0 = eval(scene.materials[v.material_id].reflectance, v.uv, scene.textures);
+        Vector3 F = F0 + (1 - F0) * pow(1 - dot(n, reflect_ray.dir), 5);
+        return F * trace_ray(scene, reflect_ray);
+    }else if(scene.materials[v.material_id].type == MaterialType::Plastic){
+        // Compute diffuse color
+        Vector3 diffuse = {Real(0), Real(0), Real(0)};
+        for(auto& l:scene.lights){
+            Real d = length(l.position - v.pos);
+            Vector3 light_dir = normalize(l.position - v.pos);
+            Ray shadow_ray = {v.pos, light_dir, c_EPSILON, (1 - c_EPSILON) * d};
+            if(!scene_occluded(scene, shadow_ray)){
+                const Vector3& Kd = eval(scene.materials[v.material_id].reflectance, v.uv, scene.textures);
+                diffuse += Kd * max(dot(n, light_dir), Real(0)) * l.intensity / (c_PI * d * d);
+            }
+        }
+        // Compute specular color
+        Ray reflect_ray = {v.pos, r.dir - 2*dot(r.dir, n) * n, c_EPSILON, infinity<Real>()};
+        Vector3 specular = trace_ray(scene, reflect_ray);
+        // Compute blend color
+        Real eta = scene.materials[v.material_id].eta;
+        Real F0 = pow((eta - 1)/(eta + 1), 2);
+        Real F = F0 + (1 - F0) * pow(1 - dot(n, reflect_ray.dir), 5);
+        return F * specular + (1 - F) * diffuse;
     }else{
         return scene.background_color;
     }

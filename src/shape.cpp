@@ -31,9 +31,10 @@ std::optional<Intersection> intersect_op::operator()(const Sphere& s) const {
     Intersection v;
     v.t = root;
     v.pos = r.origin + r.dir * v.t;
-    v.normal = normalize(v.pos - s.center);
+    v.geo_normal = normalize(v.pos - s.center);
+    v.shading_normal = v.geo_normal;
     v.material_id = s.material_id;
-    v.uv = get_sphere_uv(v.normal);
+    v.uv = get_sphere_uv(v.geo_normal);
 
     return v;
 }
@@ -77,7 +78,7 @@ std::optional<Intersection> intersect_op::operator()(const Triangle& tri) const 
         Intersection inter;
         inter.t = t;
         inter.pos = r.origin + r.dir * t;
-        inter.normal = normalize(cross(e1, e2));
+        inter.geo_normal = normalize(cross(e1, e2));
         inter.material_id = mesh.material_id;
         // Compute uv
         if (mesh.uvs.empty()) {
@@ -87,6 +88,15 @@ std::optional<Intersection> intersect_op::operator()(const Triangle& tri) const 
             Vector2 uv1 = mesh.uvs.at(indices.y);
             Vector2 uv2 = mesh.uvs.at(indices.z);
             inter.uv = (1 - u - v) * uv0 + u * uv1 + v * uv2;
+        }
+        // Compute shading normal
+        if (mesh.normals.empty()) {
+            inter.shading_normal = inter.geo_normal;
+        } else {
+            Vector3 n0 = mesh.normals.at(indices.x);
+            Vector3 n1 = mesh.normals.at(indices.y);
+            Vector3 n2 = mesh.normals.at(indices.z);
+            inter.shading_normal = (1 - u - v) * n0 + u * n1 + v * n2;
         }
         return inter;
     }

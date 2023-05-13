@@ -4,10 +4,12 @@
 
 enum class MaterialType {
     Diffuse,
-    Mirror
+    Mirror,
+    Plastic
 };
 
 struct Material {
     MaterialType type;
     Texture reflectance;
+    Real eta = 1;
 };
