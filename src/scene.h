@@ -23,6 +23,8 @@ struct Scene {
     int bvh_root_id;
 };
 
+std::optional<Intersection> bvh_intersect(const Scene &scene, const BVHNode &node, Ray ray);
 std::optional<Intersection> scene_intersect(const Scene& scene, const Ray& r);
 bool scene_occluded(const Scene& scene, const Ray& r);
 Vector3 trace_ray(const Scene& scene, const Ray& r);
+void build_bvh(Scene& scene);

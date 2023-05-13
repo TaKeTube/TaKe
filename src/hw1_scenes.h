@@ -110,10 +110,6 @@ bool scene_occluded(const Scene& scene, const Ray& r){
     return t < infinity<Real>();
 }
 
-inline double random_double(std::mt19937 &rng) {
-    return std::uniform_real_distribution<double>{0.0, 1.0}(rng);
-}
-
 Vector3 trace_ray(const Scene& scene, const Ray& r){
     std::optional<Intersection> v_ = scene_intersect(scene, r);
     if(!v_) return {0.5, 0.5, 0.5};

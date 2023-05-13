@@ -38,27 +38,3 @@ int construct_bvh(const std::vector<BBoxWithID> &boxes,
     node_pool.push_back(node);
     return node_pool.size() - 1;
 }
-
-std::optional<Intersection> intersect(const Scene &scene, const BVHNode &node, Ray ray) {
-    if (node.primitive_id != -1) {
-        return std::visit(intersect_op{ray}, scene.shapes[node.primitive_id]);
-    }
-    const BVHNode &left = scene.bvh_nodes[node.left_node_id];
-    const BVHNode &right = scene.bvh_nodes[node.right_node_id];
-    std::optional<Intersection> isect_left;
-    if (intersect(left.box, ray)) {
-        isect_left = intersect(scene, left, ray);
-        if (isect_left) {
-            ray.tmax = isect_left->t;
-        }
-    }
-    if (intersect(right.box, ray)) {
-        // Since we've already set ray.tfar to the left node
-        // if we still hit something on the right, it's closer
-        // and we should return that.
-        if (auto isect_right = intersect(scene, right, ray)) {
-            return isect_right;
-        }
-    }
-    return isect_left;
-}

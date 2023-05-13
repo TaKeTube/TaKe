@@ -74,14 +74,16 @@ Scene::Scene(const ParsedScene &scene) : camera(from_parsed_camera(scene.camera)
         ParsedPointLight point_light = std::get<ParsedPointLight>(parsed_light);
         lights.push_back(PointLight{point_light.intensity, point_light.position});
     }
+}
 
-    std::vector<BBoxWithID> bboxes(shapes.size());
+void build_bvh(Scene& scene) {
+    std::vector<BBoxWithID> bboxes(scene.shapes.size());
     for (int i = 0; i < (int)bboxes.size(); i++) {
-        if (auto *sph = std::get_if<Sphere>(&shapes[i])) {
+        if (auto *sph = std::get_if<Sphere>(&scene.shapes[i])) {
             Vector3 p_min = sph->center - sph->radius;
             Vector3 p_max = sph->center + sph->radius;
             bboxes[i] = {BBox{p_min, p_max}, i};
-        } else if (auto *tri = std::get_if<Triangle>(&shapes[i])) {
+        } else if (auto *tri = std::get_if<Triangle>(&scene.shapes[i])) {
             const TriangleMesh *mesh = tri->mesh;
             Vector3i index = mesh->indices[tri->face_index];
             Vector3 p0 = mesh->positions[index[0]];
@@ -92,7 +94,31 @@ Scene::Scene(const ParsedScene &scene) : camera(from_parsed_camera(scene.camera)
             bboxes[i] = {BBox{p_min, p_max}, i};
         }
     }
-    bvh_root_id = construct_bvh(bboxes, bvh_nodes);
+    scene.bvh_root_id = construct_bvh(bboxes, scene.bvh_nodes);
+}
+
+std::optional<Intersection> bvh_intersect(const Scene &scene, const BVHNode &node, Ray ray) {
+    if (node.primitive_id != -1) {
+        return std::visit(intersect_op{ray}, scene.shapes[node.primitive_id]);
+    }
+    const BVHNode &left = scene.bvh_nodes[node.left_node_id];
+    const BVHNode &right = scene.bvh_nodes[node.right_node_id];
+    std::optional<Intersection> isect_left;
+    if (intersect(left.box, ray)) {
+        isect_left = bvh_intersect(scene, left, ray);
+        if (isect_left) {
+            ray.tmax = isect_left->t;
+        }
+    }
+    if (intersect(right.box, ray)) {
+        // Since we've already set ray.tfar to the left node
+        // if we still hit something on the right, it's closer
+        // and we should return that.
+        if (auto isect_right = bvh_intersect(scene, right, ray)) {
+            return isect_right;
+        }
+    }
+    return isect_left;
 }
 
 std::optional<Intersection> scene_intersect(const Scene& scene, const Ray& r){

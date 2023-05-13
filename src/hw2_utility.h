@@ -10,14 +10,6 @@
 namespace hw2 {
     const Real epsilon = 1e-7;
 
-    inline double random_double(std::mt19937 &rng) {
-        return std::uniform_real_distribution<double>{0.0, 1.0}(rng);
-    }
-
-    inline int random_int(int min, int max, std::mt19937 &rng) {
-        return static_cast<int>(min + (max - min) * random_double(rng));
-    }
-
     enum class MaterialType {
         Diffuse,
         Mirror

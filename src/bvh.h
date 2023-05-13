@@ -1,6 +1,5 @@
 #pragma once
 #include "bbox.h"
-#include "scene.h"
 
 struct BVHNode {
     BBox box;
@@ -11,5 +10,3 @@ struct BVHNode {
 
 int construct_bvh(const std::vector<BBoxWithID> &boxes,
                   std::vector<BVHNode> &node_pool);
-
-std::optional<Intersection> bvh_intersect(const Scene &scene, const BVHNode &node, Ray ray);

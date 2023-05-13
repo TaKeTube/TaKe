@@ -70,6 +70,7 @@ set(SRCS src/3rdparty/miniz.h
          src/scene.h
          src/scene.cpp
          src/shape.h
+         src/shape.cpp
          )
 
 add_library(torrey_lib STATIC ${SRCS})
