@@ -247,7 +247,7 @@ namespace hw2 {
         {}
         BVHNode(std::vector<Shape*>& src_shapes, size_t start, size_t end, std::mt19937 &rng);
 
-        std::optional<Intersection> intersect(const Ray& r) const;
+        std::optional<Intersection> intersect(Ray r);
         bool intersect(const Ray& r, Intersection& v) const;
 
         std::unique_ptr<BVHNode> left;
@@ -317,7 +317,7 @@ namespace hw2 {
         box = Union(left->box, right->box);
     }
 
-    std::optional<Intersection> BVHNode::intersect(const Ray& r) const{
+    std::optional<Intersection> BVHNode::intersect(Ray r) {
         if (!box.hit(r))
             return {};
 
@@ -325,15 +325,17 @@ namespace hw2 {
             return std::visit(intersect_op{r}, *shape);
         }
 
-        auto hit_left = left == nullptr ? std::nullopt : left->intersect(r);
-        Ray rr = r;
-        rr.tmax = hit_left ? hit_left->t : r.tmax;
-        auto hit_right = right == nullptr ? std::nullopt : right->intersect(rr);
-
-        if(hit_right)
-            return hit_right;
-        else
-            return hit_left;
+        std::optional<Intersection> hit_left;
+        if (left && left->box.hit(r)) {
+            hit_left = left->intersect(r);
+            if (hit_left)
+                r.tmax = hit_left->t;
+        }
+        if (right && right->box.hit(r)) {
+            if (auto hit_right = right->intersect(r))
+                return hit_right;
+        }
+        return hit_left;
     }
 
     bool BVHNode::intersect(const Ray& r, Intersection& v) const {

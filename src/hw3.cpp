@@ -1,5 +1,6 @@
 #include "hw3.h"
 #include "parse_scene.h"
+#include "scene.h"
 
 Image3 hw_3_1(const std::vector<std::string> &params) {
     // Homework 3.1: image textures

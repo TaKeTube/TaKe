@@ -11,6 +11,7 @@
 #include <iostream>
 #include <limits>
 #include <algorithm>
+#include <random>
 
 // for suppressing unused warnings
 #define UNUSED(x) (void)(x)
@@ -24,6 +25,8 @@
 // Switching to floating point computation is easy --
 // just set Real = float.
 using Real = double;
+
+const Real c_EPSILON = 1e-7;
 
 // Lots of PIs!
 const Real c_PI = Real(3.14159265358979323846);
@@ -79,4 +82,12 @@ inline Real radians(const Real deg) {
 
 inline Real degrees(const Real rad) {
     return (Real(180) / c_PI) * rad;
+}
+
+inline double random_double(std::mt19937 &rng) {
+    return std::uniform_real_distribution<double>{0.0, 1.0}(rng);
+}
+
+inline int random_int(int min, int max, std::mt19937 &rng) {
+    return static_cast<int>(min + (max - min) * random_double(rng));
 }

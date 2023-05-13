@@ -57,7 +57,20 @@ set(SRCS src/3rdparty/miniz.h
          src/parse_scene.cpp
          src/parse_serialized.cpp
          src/print_scene.cpp
-         src/transform.cpp)
+         src/transform.cpp
+         src/bbox.h
+         src/bvh.h         
+         src/bvh.cpp
+         src/camera.h
+         src/camera.cpp
+         src/intersection.h
+         src/light.h
+         src/material.h
+         src/ray.h
+         src/scene.h
+         src/scene.cpp
+         src/shape.h
+         )
 
 add_library(torrey_lib STATIC ${SRCS})
 add_executable(torrey src/main.cpp)
