@@ -18,6 +18,7 @@ struct Scene {
     Vector3 background_color;
     int samples_per_pixel;
     std::vector<TriangleMesh> meshes;
+    TexturePool textures;
 
     std::vector<BVHNode> bvh_nodes;
     int bvh_root_id;

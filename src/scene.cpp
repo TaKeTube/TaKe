@@ -55,13 +55,51 @@ Scene::Scene(const ParsedScene &scene) : camera(from_parsed_camera(scene.camera)
     {
         if (auto *diffuse = std::get_if<ParsedDiffuse>(&parsed_mat))
         {
-            // We assume the reflectance is always RGB for now.
-            materials.push_back(Material{MaterialType::Diffuse, std::get<Vector3>(diffuse->reflectance)});
+            if (auto *color = std::get_if<Vector3>(&diffuse->reflectance)) {
+                ConstTexture texture = {*color};
+                materials.push_back(Material{MaterialType::Diffuse, texture});
+            } else if (auto *color = std::get_if<ParsedImageTexture>(&diffuse->reflectance)) {
+                std::string texture_name = color->filename.string();
+                int texture_id;
+                auto it = textures.image3s_map.find(texture_name);
+                if (it != textures.image3s_map.end()) {
+                    texture_id = textures.image3s_map.at(texture_name);
+                } else {
+                    texture_id = textures.image3s.size();
+                    textures.image3s_map.emplace(texture_name, texture_id);
+                    textures.image3s.push_back(imread3(color->filename));
+                }
+                ImageTexture texture = {
+                    texture_id,
+                    color->uscale, color->vscale,
+                    color->uoffset, color->voffset,
+                };
+                materials.push_back(Material{MaterialType::Diffuse, texture});
+            }
         }
         else if (auto *mirror = std::get_if<ParsedMirror>(&parsed_mat))
         {
-            // We assume the reflectance is always RGB for now.
-            materials.push_back(Material{MaterialType::Mirror, std::get<Vector3>(mirror->reflectance)});
+            if (auto *color = std::get_if<Vector3>(&mirror->reflectance)) {
+                ConstTexture texture = {*color};
+                materials.push_back(Material{MaterialType::Mirror, texture});
+            } else if (auto *color = std::get_if<ParsedImageTexture>(&mirror->reflectance)) {
+                std::string texture_name = color->filename.string();
+                int texture_id;
+                auto it = textures.image3s_map.find(texture_name);
+                if (it != textures.image3s_map.end()) {
+                    texture_id = textures.image3s_map.at(texture_name);
+                } else {
+                    texture_id = textures.image3s.size();
+                    textures.image3s_map.emplace(texture_name, texture_id);
+                    textures.image3s.push_back(imread3(color->filename));
+                }
+                ImageTexture texture = {
+                    texture_id,
+                    color->uscale, color->vscale,
+                    color->uoffset, color->voffset,
+                };
+                materials.push_back(Material{MaterialType::Mirror, texture});
+            }
         }
         else
         {
@@ -176,14 +214,15 @@ Vector3 trace_ray(const Scene& scene, const Ray& r){
             Vector3 light_dir = normalize(l.position - v.pos);
             Ray shadow_ray = {v.pos, light_dir, c_EPSILON, (1 - c_EPSILON) * d};
             if(!scene_occluded(scene, shadow_ray)){
-                const Vector3& Kd = scene.materials[v.material_id].color;
+                const Vector3& Kd = eval(scene.materials[v.material_id].reflectance, v.uv, scene.textures);
                 color += Kd * max(dot(n, light_dir), Real(0)) * l.intensity / (c_PI * d * d);
             }
         }
         return color;
     }else if(scene.materials[v.material_id].type == MaterialType::Mirror){
         Ray reflect_ray = {v.pos, r.dir - 2*dot(r.dir, n) * n, c_EPSILON, infinity<Real>()};
-        return scene.materials[v.material_id].color * trace_ray(scene, reflect_ray);
+        const Vector3& Kd = eval(scene.materials[v.material_id].reflectance, v.uv, scene.textures);
+        return Kd * trace_ray(scene, reflect_ray);
     }else{
         return scene.background_color;
     }

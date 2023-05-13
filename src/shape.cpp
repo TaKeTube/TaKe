@@ -1,5 +1,15 @@
 #include "shape.h"
 
+Vector2 get_sphere_uv(const Vector3& p) {
+    // p: a given point on the sphere of radius one, centered at the origin.
+    Real theta = acos(-p.y);
+    Real phi = atan2(-p.z, p.x) + c_PI;
+
+    Real u = phi / (2*c_PI);
+    Real v = - theta / c_PI;
+    return {u, v};
+}
+
 std::optional<Intersection> intersect_op::operator()(const Sphere& s) const {
     Vector3 oc = r.origin - s.center;
     Real a = dot(r.dir, r.dir);
@@ -21,8 +31,9 @@ std::optional<Intersection> intersect_op::operator()(const Sphere& s) const {
     Intersection v;
     v.t = root;
     v.pos = r.origin + r.dir * v.t;
-    v.normal = (v.pos - s.center) / s.radius;
+    v.normal = normalize(v.pos - s.center);
     v.material_id = s.material_id;
+    v.uv = get_sphere_uv(v.normal);
 
     return v;
 }
@@ -68,7 +79,15 @@ std::optional<Intersection> intersect_op::operator()(const Triangle& tri) const 
         inter.pos = r.origin + r.dir * t;
         inter.normal = normalize(cross(e1, e2));
         inter.material_id = mesh.material_id;
-        inter.uv = Vector2(u, v);
+        // Compute uv
+        if (mesh.uvs.empty()) {
+            inter.uv = Vector2(u, v);
+        } else {
+            Vector2 uv0 = mesh.uvs.at(indices.x);
+            Vector2 uv1 = mesh.uvs.at(indices.y);
+            Vector2 uv2 = mesh.uvs.at(indices.z);
+            inter.uv = (1 - u - v) * uv0 + u * uv1 + v * uv2;
+        }
         return inter;
     }
 }

@@ -27,6 +27,8 @@ struct Triangle {
     const TriangleMesh *mesh;
 };
 
+Vector2 get_sphere_uv(const Vector3& p);
+Vector2 get_triangle_uv();
 
 using Shape = std::variant<Sphere, Triangle>;
 
