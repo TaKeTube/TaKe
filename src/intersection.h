@@ -8,4 +8,10 @@ struct Intersection {
     Vector2 uv;
     Real t;
     int material_id;
+    int area_light_id;
+};
+
+struct PointAndNormal {
+	Vector3 position;
+	Vector3 normal;
 };

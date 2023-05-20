@@ -25,6 +25,7 @@ struct Sphere : public ShapeBase {
 struct Triangle {
     int face_index;
     const TriangleMesh *mesh;
+    int area_light_id = -1;
 };
 
 Vector2 get_sphere_uv(const Vector3& p);
@@ -38,3 +39,23 @@ struct intersect_op {
 
     const Ray& r;
 };
+
+struct sample_on_shape_op {
+    PointAndNormal operator()(const Sphere &s) const;
+    PointAndNormal operator()(const Triangle &s) const;
+
+    std::mt19937& rng;
+};
+
+inline PointAndNormal sample_on_shape(const Shape& shape, std::mt19937& rng) {
+    return std::visit(sample_on_shape_op{rng}, shape);
+}
+
+struct get_area_op {
+    Real operator()(const Sphere &s) const;
+    Real operator()(const Triangle &s) const;
+};
+
+inline Real get_area(const Shape& shape) {
+    return std::visit(get_area_op{}, shape);
+}

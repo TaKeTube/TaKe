@@ -35,6 +35,7 @@ std::optional<Intersection> intersect_op::operator()(const Sphere& s) const {
     v.shading_normal = v.geo_normal;
     v.material_id = s.material_id;
     v.uv = get_sphere_uv(v.geo_normal);
+    v.area_light_id = s.area_light_id;
 
     return v;
 }
@@ -80,6 +81,7 @@ std::optional<Intersection> intersect_op::operator()(const Triangle& tri) const 
         inter.pos = r.origin + r.dir * t;
         inter.geo_normal = normalize(cross(e1, e2));
         inter.material_id = mesh.material_id;
+        inter.area_light_id = tri.area_light_id;
         // Compute uv
         if (mesh.uvs.empty()) {
             inter.uv = Vector2(u, v);
@@ -100,4 +102,57 @@ std::optional<Intersection> intersect_op::operator()(const Triangle& tri) const 
         }
         return inter;
     }
+}
+
+PointAndNormal sample_on_shape_op::operator()(const Sphere &s) const {
+    Real u1 = random_double(rng);
+    Real u2 = random_double(rng);
+    
+    Vector3 normal = normalize(Vector3{
+        2 * cos(2 * c_PI * u2) * sqrt(u1 * (1 - u1)),
+        2 * sin(2 * c_PI * u2) * sqrt(u1 * (1 - u1)),
+        1 - 2 * u1
+    });
+    Vector3 point = s.center + s.radius * normal;
+    return {point, normal};
+}
+
+PointAndNormal sample_on_shape_op::operator()(const Triangle &t) const {
+    const TriangleMesh &mesh = *t.mesh;
+    const Vector3 &indices = mesh.indices.at(t.face_index);
+
+    Vector3 v0 = mesh.positions.at(indices.x);
+    Vector3 v1 = mesh.positions.at(indices.y);
+    Vector3 v2 = mesh.positions.at(indices.z);
+
+    Real u1 = random_double(rng);
+    Real u2 = random_double(rng);
+
+    Real b1 = 1 - sqrt(u1);
+    Real b2 = sqrt(u1) * u2;
+
+    Vector3 point = (1 - b1 - b2) * v0 + b1 * v1 + b2 * v2;
+    Vector3 normal = normalize(cross(v1 - v0, v2 - v0));
+
+    Vector3 n0 = mesh.normals.at(indices.x);
+    Vector3 n1 = mesh.normals.at(indices.y);
+    Vector3 n2 = mesh.normals.at(indices.z);
+    Vector3 shading_normal = (1 - b1 - b2) * n0 + b1 * n1 + b2 * n2;
+
+    return {point, dot(shading_normal, normal) > 0 ? normal : -normal};
+}
+
+Real get_area_op::operator()(const Sphere &s) const {
+    return 4*c_PI*s.radius*s.radius;
+}
+
+Real get_area_op::operator()(const Triangle &t) const {
+    const TriangleMesh &mesh = *t.mesh;
+    const Vector3 &indices = mesh.indices.at(t.face_index);
+
+    Vector3 v0 = mesh.positions.at(indices.x);
+    Vector3 v1 = mesh.positions.at(indices.y);
+    Vector3 v2 = mesh.positions.at(indices.z);
+
+    return length(cross(v1 - v0, v2 - v0)) / 2;
 }

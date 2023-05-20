@@ -65,6 +65,7 @@ set(SRCS src/3rdparty/miniz.h
          src/camera.cpp
          src/intersection.h
          src/light.h
+         src/light.cpp
          src/material.h
          src/ray.h
          src/scene.h

@@ -41,7 +41,7 @@ Scene::Scene(const ParsedScene &scene) : camera(from_parsed_camera(scene.camera)
             // Extract all the individual triangles
             for (int face_index = 0; face_index < (int)parsed_mesh->indices.size(); face_index++)
             {
-                shapes.push_back(Triangle{face_index, &meshes[tri_mesh_count]});
+                shapes.push_back(Triangle{face_index, &meshes[tri_mesh_count], parsed_mesh->area_light_id});
             }
             tri_mesh_count++;
         }
@@ -132,9 +132,30 @@ Scene::Scene(const ParsedScene &scene) : camera(from_parsed_camera(scene.camera)
     }
     for (const ParsedLight &parsed_light : scene.lights)
     {
-        // We assume all lights are point lights for now.
-        ParsedPointLight point_light = std::get<ParsedPointLight>(parsed_light);
-        lights.push_back(PointLight{point_light.intensity, point_light.position});
+        if (auto* point_light = std::get_if<ParsedPointLight>(&parsed_light)){
+            lights.push_back(PointLight{point_light->intensity, point_light->position});
+        }
+    }
+    // Reset shape id of area light
+    for (int i = 0; i < shapes.size(); ++i) {
+        int area_light_id = -1;
+        Shape& shape = shapes.at(i);
+        if (auto *sph = std::get_if<Sphere>(&shape)) {
+            area_light_id = sph->area_light_id;
+        } else if (auto *tri = std::get_if<Triangle>(&shape)) {
+            area_light_id = tri->area_light_id;
+        }
+        if (area_light_id == -1)
+            continue;
+        if (auto *area_light = std::get_if<ParsedDiffuseAreaLight>(&scene.lights.at(area_light_id))) {
+            int new_light_id = lights.size();
+            lights.push_back(DiffuseAreaLight{i, area_light->radiance});
+            if (auto *sph = std::get_if<Sphere>(&shape)) {
+                sph->area_light_id = new_light_id;
+            } else if (auto *tri = std::get_if<Triangle>(&shape)) {
+                tri->area_light_id = new_light_id;
+            }
+        }
     }
 }
 
@@ -224,7 +245,7 @@ bool scene_occluded(const Scene& scene, const Ray& r){
     }
 }
 
-Vector3 trace_ray(const Scene& scene, const Ray& r){
+Vector3 trace_ray_without_sample(const Scene& scene, const Ray& r){
     std::optional<Intersection> v_ = scene_intersect(scene, r);
     if(!v_) return scene.background_color;
     Intersection v = *v_;
@@ -232,7 +253,13 @@ Vector3 trace_ray(const Scene& scene, const Ray& r){
 
     if(scene.materials[v.material_id].type == MaterialType::Diffuse){
         Vector3 color = {Real(0), Real(0), Real(0)};
-        for(auto& l:scene.lights){
+        for(auto& light:scene.lights){
+            PointLight l;
+            if(auto* lp = std::get_if<PointLight>(&light)){
+                l = *lp;
+            } else {
+                continue;
+            }
             Real d = length(l.position - v.pos);
             Vector3 light_dir = normalize(l.position - v.pos);
             Ray shadow_ray = {v.pos, light_dir, c_EPSILON, (1 - c_EPSILON) * d};
@@ -246,11 +273,17 @@ Vector3 trace_ray(const Scene& scene, const Ray& r){
         Ray reflect_ray = {v.pos, r.dir - 2*dot(r.dir, n) * n, c_EPSILON, infinity<Real>()};
         const Vector3& F0 = eval(scene.materials[v.material_id].reflectance, v.uv, scene.textures);
         Vector3 F = F0 + (1 - F0) * pow(1 - dot(n, reflect_ray.dir), 5);
-        return F * trace_ray(scene, reflect_ray);
+        return F * trace_ray_without_sample(scene, reflect_ray);
     }else if(scene.materials[v.material_id].type == MaterialType::Plastic){
         // Compute diffuse color
         Vector3 diffuse = {Real(0), Real(0), Real(0)};
-        for(auto& l:scene.lights){
+        for(auto& light:scene.lights){
+            PointLight l;
+            if(auto* lp = std::get_if<PointLight>(&light)){
+                l = *lp;
+            } else {
+                continue;
+            }
             Real d = length(l.position - v.pos);
             Vector3 light_dir = normalize(l.position - v.pos);
             Ray shadow_ray = {v.pos, light_dir, c_EPSILON, (1 - c_EPSILON) * d};
@@ -261,7 +294,83 @@ Vector3 trace_ray(const Scene& scene, const Ray& r){
         }
         // Compute specular color
         Ray reflect_ray = {v.pos, r.dir - 2*dot(r.dir, n) * n, c_EPSILON, infinity<Real>()};
-        Vector3 specular = trace_ray(scene, reflect_ray);
+        Vector3 specular = trace_ray_without_sample(scene, reflect_ray);
+        // Compute blend color
+        Real eta = scene.materials[v.material_id].eta;
+        Real F0 = pow((eta - 1)/(eta + 1), 2);
+        Real F = F0 + (1 - F0) * pow(1 - dot(n, reflect_ray.dir), 5);
+        return F * specular + (1 - F) * diffuse;
+    }else{
+        return scene.background_color;
+    }
+}
+
+Vector3 trace_ray(const Scene& scene, const Ray& r, std::mt19937& rng){
+    std::optional<Intersection> v_ = scene_intersect(scene, r);
+    if(!v_) return scene.background_color;
+    Intersection v = *v_;
+    Vector3 n = dot(r.dir, v.shading_normal) > 0 ? -v.shading_normal : v.shading_normal;
+
+    if(v.area_light_id != -1) {
+        const Light& light = scene.lights.at(v.area_light_id);
+        if (auto* l = std::get_if<DiffuseAreaLight>(&light))
+            return l->intensity;
+    } else if(scene.materials[v.material_id].type == MaterialType::Diffuse){
+        Vector3 color = {Real(0), Real(0), Real(0)};
+        for(auto& light:scene.lights){
+            if (auto* l = std::get_if<PointLight>(&light)){
+                Real d = length(l->position - v.pos);
+                Vector3 light_dir = normalize(l->position - v.pos);
+                Ray shadow_ray = {v.pos, light_dir, c_EPSILON, (1 - c_EPSILON) * d};
+                if(!scene_occluded(scene, shadow_ray)){
+                    const Vector3& Kd = eval(scene.materials[v.material_id].reflectance, v.uv, scene.textures);
+                    color += Kd * max(dot(n, light_dir), Real(0)) * l->intensity / (c_PI * d * d);
+                }
+            } else if (auto* l = std::get_if<DiffuseAreaLight>(&light)) {
+                auto& [light_pos, light_n] = sample_on_light(scene, *l, rng);
+                Real d = length(light_pos - v.pos);
+                Vector3 light_dir = normalize(light_pos - v.pos);
+                Ray shadow_ray = {v.pos, light_dir, c_EPSILON, (1 - c_EPSILON) * d};
+                if(!scene_occluded(scene, shadow_ray)){
+                    Real pdf_reciprocal = get_area(scene.shapes.at(l->shape_id));
+                    const Vector3& Kd = eval(scene.materials[v.material_id].reflectance, v.uv, scene.textures);
+                    color += pdf_reciprocal * Kd * max(dot(n, light_dir), Real(0)) * l->intensity * max(dot(-light_n, light_dir), Real(0)) / (c_PI * d * d);
+                }
+            }
+        }
+        return color;
+    }else if(scene.materials[v.material_id].type == MaterialType::Mirror){
+        Ray reflect_ray = {v.pos, r.dir - 2*dot(r.dir, n) * n, c_EPSILON, infinity<Real>()};
+        const Vector3& F0 = eval(scene.materials[v.material_id].reflectance, v.uv, scene.textures);
+        Vector3 F = F0 + (1 - F0) * pow(1 - dot(n, reflect_ray.dir), 5);
+        return F * trace_ray(scene, reflect_ray, rng);
+    }else if(scene.materials[v.material_id].type == MaterialType::Plastic){
+        // Compute diffuse color
+        Vector3 diffuse = {Real(0), Real(0), Real(0)};
+        for(auto& light:scene.lights){
+            if (auto* l = std::get_if<PointLight>(&light)){
+                Real d = length(l->position - v.pos);
+                Vector3 light_dir = normalize(l->position - v.pos);
+                Ray shadow_ray = {v.pos, light_dir, c_EPSILON, (1 - c_EPSILON) * d};
+                if(!scene_occluded(scene, shadow_ray)){
+                    const Vector3& Kd = eval(scene.materials[v.material_id].reflectance, v.uv, scene.textures);
+                    diffuse += Kd * max(dot(n, light_dir), Real(0)) * l->intensity / (c_PI * d * d);
+                }
+            } else if (auto* l = std::get_if<DiffuseAreaLight>(&light)) {
+                auto& [light_pos, light_n] = sample_on_light(scene, *l, rng);
+                Real d = length(light_pos - v.pos);
+                Vector3 light_dir = normalize(light_pos - v.pos);
+                Ray shadow_ray = {v.pos, light_dir, c_EPSILON, (1 - c_EPSILON) * d};
+                if(!scene_occluded(scene, shadow_ray)){
+                    Real pdf_reciprocal = get_area(scene.shapes.at(l->shape_id));
+                    const Vector3& Kd = eval(scene.materials[v.material_id].reflectance, v.uv, scene.textures);
+                    diffuse += pdf_reciprocal * Kd * max(dot(n, light_dir), Real(0)) * l->intensity * max(dot(-light_n, light_dir), Real(0)) / (c_PI * d * d);
+                }
+            }
+        }
+        // Compute specular color
+        Ray reflect_ray = {v.pos, r.dir - 2*dot(r.dir, n) * n, c_EPSILON, infinity<Real>()};
+        Vector3 specular = trace_ray(scene, reflect_ray, rng);
         // Compute blend color
         Real eta = scene.materials[v.material_id].eta;
         Real F0 = pow((eta - 1)/(eta + 1), 2);
