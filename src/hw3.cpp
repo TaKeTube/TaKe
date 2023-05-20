@@ -4,6 +4,9 @@
 #include "timer.h"
 #include "parallel.h"
 #include "progressreporter.h"
+#include "hw3_utility.h"
+
+using namespace hw3;
 
 Image3 hw_3_1(const std::vector<std::string> &params) {
     // Homework 3.1: image textures
@@ -62,7 +65,7 @@ Image3 hw_3_1(const std::vector<std::string> &params) {
                             w,
                             c_EPSILON,
                             infinity<Real>()};
-                    color += trace_ray_without_sample(scene, r);
+                    color += hw3::trace_ray_without_sample(scene, r);
                 }
                 img(x, img.height - y - 1) = color / Real(scene.samples_per_pixel);
             }
@@ -131,7 +134,7 @@ Image3 hw_3_2(const std::vector<std::string> &params) {
                             w,
                             c_EPSILON,
                             infinity<Real>()};
-                    color += trace_ray_without_sample(scene, r);
+                    color += hw3::trace_ray_without_sample(scene, r);
                 }
                 img(x, img.height - y - 1) = color / Real(scene.samples_per_pixel);
             }
@@ -200,7 +203,7 @@ Image3 hw_3_3(const std::vector<std::string> &params) {
                             w,
                             c_EPSILON,
                             infinity<Real>()};
-                    color += trace_ray_without_sample(scene, r);
+                    color += hw3::trace_ray_without_sample(scene, r);
                 }
                 img(x, img.height - y - 1) = color / Real(scene.samples_per_pixel);
             }
@@ -269,7 +272,7 @@ Image3 hw_3_4(const std::vector<std::string> &params) {
                             w,
                             c_EPSILON,
                             infinity<Real>()};
-                    color += trace_ray(scene, r, rng);
+                    color += hw3::trace_ray(scene, r, rng);
                 }
                 img(x, img.height - y - 1) = color / Real(scene.samples_per_pixel);
             }
