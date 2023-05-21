@@ -58,7 +58,7 @@ Scene::Scene(const ParsedScene &scene) : camera(from_parsed_camera(scene.camera)
         {
             if (auto *color = std::get_if<Vector3>(&diffuse->reflectance)) {
                 ConstTexture texture = {*color};
-                materials.push_back(Material{MaterialType::Diffuse, texture});
+                materials.push_back(Diffuse{texture});
             } else if (auto *color = std::get_if<ParsedImageTexture>(&diffuse->reflectance)) {
                 std::string texture_name = color->filename.string();
                 int texture_id;
@@ -75,14 +75,14 @@ Scene::Scene(const ParsedScene &scene) : camera(from_parsed_camera(scene.camera)
                     color->uscale, color->vscale,
                     color->uoffset, color->voffset,
                 };
-                materials.push_back(Material{MaterialType::Diffuse, texture});
+                materials.push_back(Diffuse{texture});
             }
         }
         else if (auto *mirror = std::get_if<ParsedMirror>(&parsed_mat))
         {
             if (auto *color = std::get_if<Vector3>(&mirror->reflectance)) {
                 ConstTexture texture = {*color};
-                materials.push_back(Material{MaterialType::Mirror, texture});
+                materials.push_back(Mirror{texture});
             } else if (auto *color = std::get_if<ParsedImageTexture>(&mirror->reflectance)) {
                 std::string texture_name = color->filename.string();
                 int texture_id;
@@ -99,14 +99,14 @@ Scene::Scene(const ParsedScene &scene) : camera(from_parsed_camera(scene.camera)
                     color->uscale, color->vscale,
                     color->uoffset, color->voffset,
                 };
-                materials.push_back(Material{MaterialType::Mirror, texture});
+                materials.push_back(Mirror{texture});
             }
         }
         else if (auto *plastic = std::get_if<ParsedPlastic>(&parsed_mat))
         {
             if (auto *color = std::get_if<Vector3>(&plastic->reflectance)) {
                 ConstTexture texture = {*color};
-                materials.push_back(Material{MaterialType::Plastic, texture, plastic->eta});
+                materials.push_back(Plastic{texture, plastic->eta});
             } else if (auto *color = std::get_if<ParsedImageTexture>(&plastic->reflectance)) {
                 std::string texture_name = color->filename.string();
                 int texture_id;
@@ -123,7 +123,7 @@ Scene::Scene(const ParsedScene &scene) : camera(from_parsed_camera(scene.camera)
                     color->uscale, color->vscale,
                     color->uoffset, color->voffset,
                 };
-                materials.push_back(Material{MaterialType::Plastic, texture, plastic->eta});
+                materials.push_back(Plastic{texture, plastic->eta});
             }
         }
         else
@@ -246,78 +246,53 @@ bool scene_occluded(const Scene& scene, const Ray& r){
     }
 }
 
-Vector3 trace_ray(const Scene& scene, const Ray& r, std::mt19937& rng){
+Vector3 trace_ray(const Scene& scene, const Ray& ray, std::mt19937& rng){
+    Ray r = ray;
     std::optional<Intersection> v_ = scene_intersect(scene, r);
     if(!v_) return scene.background_color;
     Intersection v = *v_;
-    Vector3 n = dot(r.dir, v.shading_normal) > 0 ? -v.shading_normal : v.shading_normal;
 
-    if(v.area_light_id != -1) {
-        const Light& light = scene.lights.at(v.area_light_id);
-        if (auto* l = std::get_if<DiffuseAreaLight>(&light))
-            return l->intensity;
-    } else if(scene.materials[v.material_id].type == MaterialType::Diffuse){
-        Vector3 color = {Real(0), Real(0), Real(0)};
-        for(auto& light:scene.lights){
-            if (auto* l = std::get_if<PointLight>(&light)){
-                Real d = length(l->position - v.pos);
-                Vector3 light_dir = normalize(l->position - v.pos);
-                Ray shadow_ray = {v.pos, light_dir, c_EPSILON, (1 - c_EPSILON) * d};
-                if(!scene_occluded(scene, shadow_ray)){
-                    const Vector3& Kd = eval(scene.materials[v.material_id].reflectance, v.uv, scene.textures);
-                    color += Kd * max(dot(n, light_dir), Real(0)) * l->intensity / (c_PI * d * d);
-                }
-            } else if (auto* l = std::get_if<DiffuseAreaLight>(&light)) {
-                auto& [light_pos, light_n] = sample_on_light(scene, *l, rng);
-                Real d = length(light_pos - v.pos);
-                Vector3 light_dir = normalize(light_pos - v.pos);
-                Ray shadow_ray = {v.pos, light_dir, c_EPSILON, (1 - c_EPSILON) * d};
-                if(!scene_occluded(scene, shadow_ray)){
-                    Real pdf_reciprocal = get_area(scene.shapes.at(l->shape_id));
-                    const Vector3& Kd = eval(scene.materials[v.material_id].reflectance, v.uv, scene.textures);
-                    color += pdf_reciprocal * Kd * max(dot(n, light_dir), Real(0)) * l->intensity * max(dot(-light_n, light_dir), Real(0)) / (c_PI * d * d);
-                }
+    Vector3 radiance = {Real(0), Real(0), Real(0)};
+    Vector3 throughput = {Real(1), Real(1), Real(1)};
+    for(int i = 0; i <= scene.options.max_depth; ++i){
+        if(v.area_light_id != -1) {
+            const Light& light = scene.lights.at(v.area_light_id);
+            if (auto* l = std::get_if<DiffuseAreaLight>(&light)){
+                radiance += throughput * l->intensity;
+                break;
             }
-        }
-        return color;
-    }else if(scene.materials[v.material_id].type == MaterialType::Mirror){
-        Ray reflect_ray = {v.pos, r.dir - 2*dot(r.dir, n) * n, c_EPSILON, infinity<Real>()};
-        const Vector3& F0 = eval(scene.materials[v.material_id].reflectance, v.uv, scene.textures);
-        Vector3 F = F0 + (1 - F0) * pow(1 - dot(n, reflect_ray.dir), 5);
-        return F * trace_ray(scene, reflect_ray, rng);
-    }else if(scene.materials[v.material_id].type == MaterialType::Plastic){
-        // Compute diffuse color
-        Vector3 diffuse = {Real(0), Real(0), Real(0)};
-        for(auto& light:scene.lights){
-            if (auto* l = std::get_if<PointLight>(&light)){
-                Real d = length(l->position - v.pos);
-                Vector3 light_dir = normalize(l->position - v.pos);
-                Ray shadow_ray = {v.pos, light_dir, c_EPSILON, (1 - c_EPSILON) * d};
-                if(!scene_occluded(scene, shadow_ray)){
-                    const Vector3& Kd = eval(scene.materials[v.material_id].reflectance, v.uv, scene.textures);
-                    diffuse += Kd * max(dot(n, light_dir), Real(0)) * l->intensity / (c_PI * d * d);
-                }
-            } else if (auto* l = std::get_if<DiffuseAreaLight>(&light)) {
-                auto& [light_pos, light_n] = sample_on_light(scene, *l, rng);
-                Real d = length(light_pos - v.pos);
-                Vector3 light_dir = normalize(light_pos - v.pos);
-                Ray shadow_ray = {v.pos, light_dir, c_EPSILON, (1 - c_EPSILON) * d};
-                if(!scene_occluded(scene, shadow_ray)){
-                    Real pdf_reciprocal = get_area(scene.shapes.at(l->shape_id));
-                    const Vector3& Kd = eval(scene.materials[v.material_id].reflectance, v.uv, scene.textures);
-                    diffuse += pdf_reciprocal * Kd * max(dot(n, light_dir), Real(0)) * l->intensity * max(dot(-light_n, light_dir), Real(0)) / (c_PI * d * d);
-                }
+        } else {
+            Vector3 dir_in = -r.dir;
+            Vector3 n = dot(dir_in, v.shading_normal) < 0 ? -v.shading_normal : v.shading_normal;
+            std::optional<SampleRecord> record_ = sample_bsdf(scene.materials[v.material_id], dir_in, v, scene.textures, rng);
+            if(!record_){
+                // std::cout << "record break" << std::endl;
+                break;
             }
+            SampleRecord& record = *record_;
+            Vector3 FG = eval(scene.materials[v.material_id], dir_in, record, v, scene.textures);
+            Vector3 dir_out = record.dir_out;
+            Real pdf = record.pdf;
+            if(pdf <= Real(c_EPSILON)){
+                // std::cout << "pdf break" << std::endl;
+                break;
+            }
+            throughput *= FG / pdf;
+            // std::cout << throughput[0] << std::endl;
+            // if(std::isnan(throughput[0])) {
+            //     std::cout << pdf << " " << FG << std::endl;
+            // }
+            // if(i >= 2) std::cout << radiance[0] << std::endl;
+            r = Ray{v.pos, dir_out, c_EPSILON, infinity<Real>()};
+            std::optional<Intersection> v_ = scene_intersect(scene, r);
+            if(!v_){
+                // std::cout << "bg break" << std::endl;
+                radiance += throughput * scene.background_color;
+                break;
+            }
+            v = *v_;
         }
-        // Compute specular color
-        Ray reflect_ray = {v.pos, r.dir - 2*dot(r.dir, n) * n, c_EPSILON, infinity<Real>()};
-        Vector3 specular = trace_ray(scene, reflect_ray, rng);
-        // Compute blend color
-        Real eta = scene.materials[v.material_id].eta;
-        Real F0 = pow((eta - 1)/(eta + 1), 2);
-        Real F = F0 + (1 - F0) * pow(1 - dot(n, reflect_ray.dir), 5);
-        return F * specular + (1 - F) * diffuse;
-    }else{
-        return scene.background_color;
     }
+    // std::cout << radiance[0] << std::endl;
+    return radiance;
 }

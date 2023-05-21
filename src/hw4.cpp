@@ -11,7 +11,7 @@ Image3 hw_4_1(const std::vector<std::string> &params) {
         return Image3(0, 0);
     }
 
-    int max_depth = 50;
+    int max_depth = 2;
     std::string filename;
     for (int i = 0; i < (int)params.size(); i++) {
         if (params[i] == "-max_depth") {
@@ -80,7 +80,7 @@ Image3 hw_4_1(const std::vector<std::string> &params) {
         }
         reporter.update(1);
     }, Vector2i(num_tiles_x, num_tiles_y));
-    std::cout << "Finish building rendering. Took " << tick(timer) << " seconds." << std::endl;
+    std::cout << std::endl << "Finish building rendering. Took " << tick(timer) << " seconds." << std::endl;
 
     return img;
 }

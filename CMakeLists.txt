@@ -27,12 +27,8 @@ set(SRCS src/3rdparty/miniz.h
          src/3rdparty/tinyply.h
          src/compute_normals.h
          src/flexception.h
-         src/hw1.h
-         src/hw1_scenes.h
-         src/hw2.h
-         src/hw2_utility.h
-         src/hw3.h
          src/hw4.h
+         src/hw4.cpp
          src/image.h
          src/matrix.h
          src/parallel.h
@@ -45,10 +41,6 @@ set(SRCS src/3rdparty/miniz.h
          src/transform.h
          src/vector.h
          src/compute_normals.cpp
-         src/hw1.cpp
-         src/hw2.cpp
-         src/hw3.cpp
-         src/hw4.cpp
          src/image.cpp
          src/main.cpp
          src/parallel.cpp
@@ -67,6 +59,7 @@ set(SRCS src/3rdparty/miniz.h
          src/light.h
          src/light.cpp
          src/material.h
+         src/material.cpp
          src/ray.h
          src/scene.h
          src/scene.cpp
@@ -74,6 +67,9 @@ set(SRCS src/3rdparty/miniz.h
          src/shape.cpp
          src/texture.h
          src/texture.cpp
+         src/materials/diffuse.inl
+         src/materials/mirror.inl
+         src/materials/plastic.inl
          )
 
 add_library(torrey_lib STATIC ${SRCS})

@@ -1,0 +1,17 @@
+std::optional<SampleRecord> sample_bsdf_op::operator()(const Mirror &m) const {
+    if (dot(v.geo_normal, dir_in) < 0) {
+        return {};
+    }
+    Vector3 n = dot(dir_in, v.shading_normal) < 0 ? -v.shading_normal : v.shading_normal;
+    SampleRecord record;
+    record.dir_out = dir_in - 2*dot(dir_in, n) * n;
+    record.pdf = 1;
+    return record;
+}
+
+Vector3 eval_material_op::operator()(const Mirror &m) const{
+    Vector3 n = dot(dir_in, v.shading_normal) > 0 ? -v.shading_normal : v.shading_normal;
+    const Vector3& F0 = eval(m.reflectance, v.uv, texture_pool);
+    Vector3 F = F0 + (1 - F0) * pow(1 - dot(n, record.dir_out), 5);
+    return F;
+}

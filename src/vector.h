@@ -305,3 +305,18 @@ template <typename T>
 inline std::ostream& operator<<(std::ostream &os, const TVector3<T> &v) {
     return os << "(" << v[0] << ", " << v[1] << ", " << v[2] << ")";
 }
+
+// https://backend.orbit.dtu.dk/ws/portalfiles/portal/126824972/onb_frisvad_jgt2012_v2.pdf
+inline Vector3 to_world(const Vector3 &n, const Vector3 &v) {
+    Vector3 x, y;
+    if (n[2] < Real(-1 + 1e-6)) {
+        x = Vector3{0, -1, 0};
+        y = Vector3{-1, 0, 0};
+    } else {
+        Real a = 1 / (1 + n[2]);
+        Real b = -n[0] * n[1] * a;
+        x = Vector3{1 - n[0] * n[0] * a, b, -n[0]};
+        y = Vector3{b, 1 - n[1] * n[1] * a, -n[1]};
+    }
+    return x * v[0] + y * v[1] + n * v[2];
+}
