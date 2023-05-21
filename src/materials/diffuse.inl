@@ -17,8 +17,5 @@ Vector3 eval_material_op::operator()(const Diffuse &m) const {
         return {Real(0), Real(0), Real(0)};
     Vector3 n = dot(dir_in, v.shading_normal) < 0 ? -v.shading_normal : v.shading_normal;
     const Vector3& Kd = eval(m.reflectance, v.uv, texture_pool);
-    // if(std::isnan(Kd[0])) {
-    //     std::cout << Kd << std::endl;
-    // }
     return Kd * fmax(dot(n, record.dir_out), Real(0)) / c_PI;
 }

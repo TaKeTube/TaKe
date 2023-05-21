@@ -278,11 +278,6 @@ Vector3 trace_ray(const Scene& scene, const Ray& ray, std::mt19937& rng){
                 break;
             }
             throughput *= FG / pdf;
-            // std::cout << throughput[0] << std::endl;
-            // if(std::isnan(throughput[0])) {
-            //     std::cout << pdf << " " << FG << std::endl;
-            // }
-            // if(i >= 2) std::cout << radiance[0] << std::endl;
             r = Ray{v.pos, dir_out, c_EPSILON, infinity<Real>()};
             std::optional<Intersection> v_ = scene_intersect(scene, r);
             if(!v_){
@@ -293,6 +288,5 @@ Vector3 trace_ray(const Scene& scene, const Ray& ray, std::mt19937& rng){
             v = *v_;
         }
     }
-    // std::cout << radiance[0] << std::endl;
     return radiance;
 }
