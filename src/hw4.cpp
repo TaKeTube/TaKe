@@ -67,10 +67,11 @@ Image3 hw_4_1(const std::vector<std::string> &params) {
             for (int x = x0; x < x1; x++) {
                 Vector3 color = {0, 0, 0};
                 for (int i = 0; i < scene.options.spp; i++){
-                    Ray r = {cam.lookfrom, 
+                    Ray r = {cam.lookfrom,
+                            normalize(
                             u * ((x + random_double(rng)) / img.width - Real(0.5)) * viewport_width +
                             v * ((y + random_double(rng)) / img.height - Real(0.5)) * viewport_height -
-                            w,
+                            w),
                             c_EPSILON,
                             infinity<Real>()};
                     color += trace_ray(scene, r, rng);
@@ -147,10 +148,11 @@ Image3 hw_4_2(const std::vector<std::string> &params) {
             for (int x = x0; x < x1; x++) {
                 Vector3 color = {0, 0, 0};
                 for (int i = 0; i < scene.options.spp; i++){
-                    Ray r = {cam.lookfrom, 
+                    Ray r = {cam.lookfrom,
+                            normalize(
                             u * ((x + random_double(rng)) / img.width - Real(0.5)) * viewport_width +
                             v * ((y + random_double(rng)) / img.height - Real(0.5)) * viewport_height -
-                            w,
+                            w),
                             c_EPSILON,
                             infinity<Real>()};
                     color += trace_ray(scene, r, rng);

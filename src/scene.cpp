@@ -126,6 +126,78 @@ Scene::Scene(const ParsedScene &scene) : camera(from_parsed_camera(scene.camera)
                 materials.push_back(Plastic{texture, plastic->eta});
             }
         }
+        else if (auto *phong = std::get_if<ParsedPhong>(&parsed_mat))
+        {
+            if (auto *color = std::get_if<Vector3>(&phong->reflectance)) {
+                ConstTexture texture = {*color};
+                materials.push_back(Phong{texture, phong->exponent});
+            } else if (auto *color = std::get_if<ParsedImageTexture>(&phong->reflectance)) {
+                std::string texture_name = color->filename.string();
+                int texture_id;
+                auto it = textures.image3s_map.find(texture_name);
+                if (it != textures.image3s_map.end()) {
+                    texture_id = textures.image3s_map.at(texture_name);
+                } else {
+                    texture_id = textures.image3s.size();
+                    textures.image3s_map.emplace(texture_name, texture_id);
+                    textures.image3s.push_back(imread3(color->filename));
+                }
+                ImageTexture texture = {
+                    texture_id,
+                    color->uscale, color->vscale,
+                    color->uoffset, color->voffset,
+                };
+                materials.push_back(Phong{texture, phong->exponent});
+            }
+        }
+        else if (auto *blinn_phong = std::get_if<ParsedBlinnPhong>(&parsed_mat))
+        {
+            if (auto *color = std::get_if<Vector3>(&blinn_phong->reflectance)) {
+                ConstTexture texture = {*color};
+                materials.push_back(BlinnPhong{texture, blinn_phong->exponent});
+            } else if (auto *color = std::get_if<ParsedImageTexture>(&blinn_phong->reflectance)) {
+                std::string texture_name = color->filename.string();
+                int texture_id;
+                auto it = textures.image3s_map.find(texture_name);
+                if (it != textures.image3s_map.end()) {
+                    texture_id = textures.image3s_map.at(texture_name);
+                } else {
+                    texture_id = textures.image3s.size();
+                    textures.image3s_map.emplace(texture_name, texture_id);
+                    textures.image3s.push_back(imread3(color->filename));
+                }
+                ImageTexture texture = {
+                    texture_id,
+                    color->uscale, color->vscale,
+                    color->uoffset, color->voffset,
+                };
+                materials.push_back(BlinnPhong{texture, blinn_phong->exponent});
+            }
+        }
+        else if (auto *blinn_phong_microfacet = std::get_if<ParsedBlinnPhongMicrofacet>(&parsed_mat))
+        {
+            if (auto *color = std::get_if<Vector3>(&blinn_phong_microfacet->reflectance)) {
+                ConstTexture texture = {*color};
+                materials.push_back(BlinnPhongMicrofacet{texture, blinn_phong_microfacet->exponent});
+            } else if (auto *color = std::get_if<ParsedImageTexture>(&blinn_phong_microfacet->reflectance)) {
+                std::string texture_name = color->filename.string();
+                int texture_id;
+                auto it = textures.image3s_map.find(texture_name);
+                if (it != textures.image3s_map.end()) {
+                    texture_id = textures.image3s_map.at(texture_name);
+                } else {
+                    texture_id = textures.image3s.size();
+                    textures.image3s_map.emplace(texture_name, texture_id);
+                    textures.image3s.push_back(imread3(color->filename));
+                }
+                ImageTexture texture = {
+                    texture_id,
+                    color->uscale, color->vscale,
+                    color->uoffset, color->voffset,
+                };
+                materials.push_back(BlinnPhongMicrofacet{texture, blinn_phong_microfacet->exponent});
+            }
+        }
         else
         {
             assert(false);
@@ -271,9 +343,9 @@ Vector3 trace_ray(const Scene& scene, const Ray& ray, std::mt19937& rng){
             }
             SampleRecord& record = *record_;
             Vector3 FG = eval(scene.materials[v.material_id], dir_in, record, v, scene.textures);
-            Vector3 dir_out = record.dir_out;
+            Vector3 dir_out = normalize(record.dir_out);
             Real pdf = record.pdf;
-            if(pdf <= 0){
+            if(pdf <= Real(0)){
                 // std::cout << "pdf break" << std::endl;
                 break;
             }

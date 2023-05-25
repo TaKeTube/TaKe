@@ -103,7 +103,7 @@ std::optional<Intersection> intersect_op::operator()(const Triangle& tri) const 
             Vector3 n0 = mesh.normals.at(indices.x);
             Vector3 n1 = mesh.normals.at(indices.y);
             Vector3 n2 = mesh.normals.at(indices.z);
-            inter.shading_normal = (1 - u - v) * n0 + u * n1 + v * n2;
+            inter.shading_normal = normalize((1 - u - v) * n0 + u * n1 + v * n2);
         }
         return inter;
     }

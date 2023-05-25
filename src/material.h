@@ -18,9 +18,27 @@ struct Plastic {
     Real eta = 1;
 };
 
+struct Phong {
+    Texture reflectance; // Ks
+    Real exponent; // alpha
+};
+
+struct BlinnPhong {
+    Texture reflectance; // Ks
+    Real exponent; // alpha
+};
+
+struct BlinnPhongMicrofacet {
+    Texture reflectance; // Ks
+    Real exponent; // alpha
+};
+
 using Material = std::variant<Diffuse,
                               Mirror,
-                              Plastic>;
+                              Plastic,
+                              Phong,
+                              BlinnPhong,
+                              BlinnPhongMicrofacet>;
 
 struct SampleRecord {
     Vector3 dir_out;

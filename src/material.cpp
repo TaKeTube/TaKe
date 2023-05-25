@@ -4,6 +4,9 @@ struct sample_bsdf_op{
     std::optional<SampleRecord> operator()(const Diffuse &m) const;
     std::optional<SampleRecord> operator()(const Mirror &m) const;
     std::optional<SampleRecord> operator()(const Plastic &m) const;
+    std::optional<SampleRecord> operator()(const Phong &m) const;
+    std::optional<SampleRecord> operator()(const BlinnPhong &m) const;
+    std::optional<SampleRecord> operator()(const BlinnPhongMicrofacet &m) const;
 
     const Vector3 &dir_in;
     const Intersection &v;
@@ -15,6 +18,9 @@ struct eval_material_op{
     Vector3 operator()(const Diffuse &m) const;
     Vector3 operator()(const Mirror &m) const;
     Vector3 operator()(const Plastic &m) const;
+    Vector3 operator()(const Phong &m) const;
+    Vector3 operator()(const BlinnPhong &m) const;
+    Vector3 operator()(const BlinnPhongMicrofacet &m) const;
 
     const Vector3 &dir_in;
     const SampleRecord &record;
