@@ -273,7 +273,7 @@ Vector3 trace_ray(const Scene& scene, const Ray& ray, std::mt19937& rng){
             Vector3 FG = eval(scene.materials[v.material_id], dir_in, record, v, scene.textures);
             Vector3 dir_out = record.dir_out;
             Real pdf = record.pdf;
-            if(pdf <= Real(c_EPSILON)){
+            if(pdf <= 0){
                 // std::cout << "pdf break" << std::endl;
                 break;
             }

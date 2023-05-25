@@ -70,6 +70,9 @@ set(SRCS src/3rdparty/miniz.h
          src/materials/diffuse.inl
          src/materials/mirror.inl
          src/materials/plastic.inl
+         src/materials/phong.inl
+         src/materials/blinn_phong.inl
+         src/materials/blinn_phong_microfacet.inl
          )
 
 add_library(torrey_lib STATIC ${SRCS})

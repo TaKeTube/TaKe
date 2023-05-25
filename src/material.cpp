@@ -25,6 +25,9 @@ struct eval_material_op{
 #include "materials/diffuse.inl"
 #include "materials/mirror.inl"
 #include "materials/plastic.inl"
+#include "materials/phong.inl"
+#include "materials/blinn_phong.inl"
+#include "materials/blinn_phong_microfacet.inl"
 
 std::optional<SampleRecord> sample_bsdf(const Material &material,
                                         const Vector3 &dir_in,
