@@ -59,6 +59,13 @@ std::optional<SampleRecord> sample_bsdf(
     const TexturePool &pool,
     std::mt19937 &rng);
 
+Real get_bsdf_pdf(
+    const Material &material,
+    const Vector3 &dir_in,
+    const Vector3 &dir_out,
+    const Intersection &v,
+    const TexturePool &pool);
+
 inline Vector3 sample_hemisphere_cos(std::mt19937& rng) {
     Real u1 = random_double(rng);
     Real u2 = random_double(rng);
@@ -70,4 +77,12 @@ inline Vector3 sample_hemisphere_cos(std::mt19937& rng) {
         sin(phi) * sqrt_u1,
         sqrt(std::clamp(1 - u1, Real(0), Real(1)))
     };
+}
+
+inline Real compute_blinn_phong_G_hat(Vector3 omega, Vector3 n, Real alpha) {
+    Real odn = dot(omega, n);
+    Real a = sqrt(0.5 * alpha + 1)/sqrt(1/(odn * odn) - 1);
+    Real a2 = a*a;
+    Real G_hat = a < 1.6 ? (3.535*a+2.181*a2)/(1+2.276*a+2.577*a2) : 1;
+    return G_hat;
 }

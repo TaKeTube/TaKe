@@ -9,6 +9,12 @@ std::optional<SampleRecord> sample_bsdf_op::operator()(const Mirror &m) const {
     return record;
 }
 
+Real sample_bsdf_pdf_op::operator()(const Mirror &m) const {
+    if(length(normalize(dir_in + dir_out) - v.shading_normal) < c_EPSILON)
+        return Real(1);
+    return Real(0);
+}
+
 Vector3 eval_material_op::operator()(const Mirror &m) const{
     if (dot(v.geo_normal, dir_in) < 0 || dot(v.geo_normal, record.dir_out) < 0)
         return {Real(0), Real(0), Real(0)};

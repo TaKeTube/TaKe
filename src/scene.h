@@ -33,4 +33,5 @@ std::optional<Intersection> bvh_intersect(const Scene &scene, const BVHNode &nod
 std::optional<Intersection> scene_intersect(const Scene& scene, const Ray& r);
 bool scene_occluded(const Scene& scene, const Ray& r);
 Vector3 trace_ray(const Scene& scene, const Ray& r, std::mt19937& rng);
+Vector3 trace_ray_MIS(const Scene& scene, const Ray& ray, std::mt19937& rng);
 void build_bvh(Scene& scene);

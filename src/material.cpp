@@ -14,6 +14,20 @@ struct sample_bsdf_op{
     std::mt19937 &rng;
 };
 
+struct sample_bsdf_pdf_op{
+    Real operator()(const Diffuse &m) const;
+    Real operator()(const Mirror &m) const;
+    Real operator()(const Plastic &m) const;
+    Real operator()(const Phong &m) const;
+    Real operator()(const BlinnPhong &m) const;
+    Real operator()(const BlinnPhongMicrofacet &m) const;
+
+    const Vector3 &dir_in;
+    const Vector3 &dir_out;
+    const Intersection &v;
+    const TexturePool &pool;
+};
+
 struct eval_material_op{
     Vector3 operator()(const Diffuse &m) const;
     Vector3 operator()(const Mirror &m) const;
@@ -41,6 +55,14 @@ std::optional<SampleRecord> sample_bsdf(const Material &material,
                                         const TexturePool &pool,
                                         std::mt19937 &rng){
     return std::visit(sample_bsdf_op{dir_in, v, pool, rng}, material);
+}
+
+Real get_bsdf_pdf(const Material &material,
+                  const Vector3 &dir_in,
+                  const Vector3 &dir_out,
+                  const Intersection &v,
+                  const TexturePool &pool){
+    return std::visit(sample_bsdf_pdf_op{dir_in, dir_out, v, pool}, material);
 }
 
 Vector3 eval(const Material &material,

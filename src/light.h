@@ -1,4 +1,5 @@
 #pragma once
+#include <variant>
 #include "vector.h"
 #include "intersection.h"
 #include "shape.h"
@@ -24,6 +25,9 @@ struct sample_on_light_op {
     const Scene &scene;
     std::mt19937& rng;
 };
+
+int sample_light(const Scene &scene, std::mt19937& rng);
+Real get_light_pdf(const Scene &scene, int light_id);
 
 inline PointAndNormal sample_on_light(const Scene &scene, const Light& l, std::mt19937& rng) {
     return std::visit(sample_on_light_op{scene, rng}, l);

@@ -362,3 +362,107 @@ Vector3 trace_ray(const Scene& scene, const Ray& ray, std::mt19937& rng){
     }
     return radiance;
 }
+
+Vector3 trace_ray_MIS(const Scene& scene, const Ray& ray, std::mt19937& rng){
+    Ray r = ray;
+    std::optional<Intersection> v_ = scene_intersect(scene, r);
+    if(!v_) return scene.background_color;
+    Intersection v = *v_;
+
+    Vector3 radiance = {Real(0), Real(0), Real(0)};
+    Vector3 throughput = {Real(1), Real(1), Real(1)};
+    for(int i = 0; i <= scene.options.max_depth; ++i){
+        if(v.area_light_id != -1) {
+            const Light& light = scene.lights.at(v.area_light_id);
+            if (auto* l = std::get_if<DiffuseAreaLight>(&light)){
+                // std::cout << throughput << std::endl;
+                radiance += throughput * l->intensity;
+                break;
+            }
+        }
+
+        Vector3 dir_in = -r.dir;
+        if(scene.lights.size() > 0 && random_double(rng) <= 0.5){
+            // Sampling Light
+            int light_id = sample_light(scene, rng);
+            auto light = scene.lights[light_id];
+            if (auto* l = std::get_if<DiffuseAreaLight>(&light)) {
+                auto& [light_pos, light_n] = sample_on_light(scene, *l, rng);
+                Real d = length(light_pos - v.pos);
+                Vector3 light_dir = normalize(light_pos - v.pos);
+
+                Real light_pdf = get_light_pdf(scene, light_id) * (d * d) / fmax(dot(-light_n, light_dir), Real(0)) / scene.lights.size();
+                if(light_pdf <= 0){
+                    // std::cout << light_pdf << "light pdf break" << std::endl;
+                    break;
+                }
+                Real bsdf_pdf = get_bsdf_pdf(scene.materials[v.material_id], dir_in, light_dir, v, scene.textures);
+                if(bsdf_pdf <= 0){
+                    // std::cout << "bsdf pdf break" << std::endl;
+                    break;
+                }
+                
+                SampleRecord record = {};
+                record.dir_out = light_dir;
+                Vector3 FG = eval(scene.materials[v.material_id], dir_in, record, v, scene.textures);
+                throughput *= FG / (0.5 * light_pdf);
+
+                r = Ray{v.pos, light_dir, c_EPSILON, infinity<Real>()};
+                std::optional<Intersection> v_ = scene_intersect(scene, r);
+                // if(!v_){
+                //     // std::cout << "bg break" << std::endl;
+                //     radiance += throughput * scene.background_color;
+                //     break;
+                // }
+                v = *v_;
+                if(v.area_light_id == -1){
+                    break;
+                }else{
+                    throughput *= light_pdf / (light_pdf + bsdf_pdf);
+                }
+            }
+        }else{
+            // Sampling bsdf
+            Vector3 n = dot(dir_in, v.shading_normal) < 0 ? -v.shading_normal : v.shading_normal;
+            std::optional<SampleRecord> record_ = sample_bsdf(scene.materials[v.material_id], dir_in, v, scene.textures, rng);
+            if(!record_){
+                // std::cout << "record break" << std::endl;
+                break;
+            }
+            SampleRecord& record = *record_;
+            Vector3 FG = eval(scene.materials[v.material_id], dir_in, record, v, scene.textures);
+            Vector3 dir_out = normalize(record.dir_out);
+            Real bsdf_pdf = record.pdf;
+            if(bsdf_pdf <= Real(0)){
+                // std::cout << "pdf break" << std::endl;
+                break;
+            }
+            r = Ray{v.pos, dir_out, c_EPSILON, infinity<Real>()};
+            std::optional<Intersection> v_ = scene_intersect(scene, r);
+
+            Real pdf = scene.lights.empty() ? bsdf_pdf : 0.5 * bsdf_pdf;
+
+            if(!v_){
+                // std::cout << "bg break" << std::endl;
+                throughput *= FG / pdf;
+                radiance += throughput * scene.background_color;
+                break;
+            }
+            if(v_->area_light_id != -1){
+                Vector3 &light_pos = v_->pos;
+                Real d = length(light_pos - v_->pos);
+                Vector3 light_dir = normalize(light_pos - v.pos);
+                Real light_pdf = get_light_pdf(scene, v_->area_light_id) * (d * d) / fmax(dot(-v_->geo_normal, light_dir), Real(0)) / scene.lights.size();
+                if(light_pdf <= 0)
+                    break;
+                pdf += 0.5 * light_pdf;
+                // if(std::isnan(pdf)) {
+                //     std::cout << light_dir << std::endl;
+                // }
+            }
+            throughput *= FG / pdf;
+            v = *v_;
+        }
+    }
+    return radiance;
+}

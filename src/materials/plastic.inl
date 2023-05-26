@@ -24,6 +24,16 @@ std::optional<SampleRecord> sample_bsdf_op::operator()(const Plastic &m) const {
     return record;
 }
 
+Real sample_bsdf_pdf_op::operator()(const Plastic &m) const {
+    if (dot(v.geo_normal, dir_out) < 0) 
+        return Real(0);
+    Vector3 n = dot(dir_in, v.shading_normal) < 0 ? -v.shading_normal : v.shading_normal;
+
+    Real eta = m.eta;
+    Real F0 = pow((eta - 1)/(eta + 1), 2);
+    return (1 - F0) * fmax(dot(n, dir_out), Real(0)) / c_PI;
+}
+
 Vector3 eval_material_op::operator()(const Plastic &m) const {
     if (dot(v.geo_normal, dir_in) < 0 || dot(v.geo_normal, record.dir_out) < 0)
         return {Real(0), Real(0), Real(0)};
