@@ -11,7 +11,6 @@ Real get_light_pdf(const Scene &scene, int light_id) {
         if(auto* s = std::get_if<Triangle>(&shape)){
             return 1/get_area(*s);
         }else if(auto* s = std::get_if<Sphere>(&shape)){
-            // std::cout << 2/get_area(*s) << std::endl;
             return 1/get_area(*s);
         }
     }
