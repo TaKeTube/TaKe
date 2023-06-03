@@ -31,7 +31,8 @@ Real sample_bsdf_pdf_op::operator()(const Plastic &m) const {
 
     Real eta = m.eta;
     Real F0 = pow((eta - 1)/(eta + 1), 2);
-    return (1 - F0) * fmax(dot(n, dir_out), Real(0)) / c_PI;
+    Real F = F0 + (1 - F0) * pow(1 - dot(n, dir_out), 5);
+    return length(normalize(dir_in + dir_out) - n) < c_EPSILON ? Real(F) : (1 - F) * fmax(dot(n, dir_out), Real(0)) / c_PI;
 }
 
 Vector3 eval_material_op::operator()(const Plastic &m) const {

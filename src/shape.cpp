@@ -109,15 +109,36 @@ std::optional<Intersection> intersect_op::operator()(const Triangle& tri) const 
     }
 }
 
+// PointAndNormal sample_on_shape_op::operator()(const Sphere &s) const {
+//     Real u1 = random_double(rng);
+//     Real u2 = random_double(rng);
+    
+//     Vector3 normal = normalize(Vector3{
+//         2 * cos(2 * c_PI * u2) * sqrt(u1 * (1 - u1)),
+//         2 * sin(2 * c_PI * u2) * sqrt(u1 * (1 - u1)),
+//         1 - 2 * u1
+//     });
+//     Vector3 point = s.center + s.radius * normal;
+//     return {point, normal};
+// }
+
 PointAndNormal sample_on_shape_op::operator()(const Sphere &s) const {
     Real u1 = random_double(rng);
     Real u2 = random_double(rng);
+
+    Real r = s.radius;
+    Real d = length(s.center - ref_pos);
+    Real z = 1 + u1 * (r / d - 1);
+    Real z2 = z * z;
+    Real sin_theta = std::sqrt(std::clamp(1 - z2, Real(0), Real(1)));
     
-    Vector3 normal = normalize(Vector3{
-        2 * cos(2 * c_PI * u2) * sqrt(u1 * (1 - u1)),
-        2 * sin(2 * c_PI * u2) * sqrt(u1 * (1 - u1)),
-        1 - 2 * u1
+    Vector3 local_p = normalize(Vector3{
+        cos(2 * c_PI * u2) * sin_theta,
+        sin(2 * c_PI * u2) * sin_theta,
+        z
     });
+
+    Vector3 normal = normalize(to_world(normalize(ref_pos - s.center), local_p));
     Vector3 point = s.center + s.radius * normal;
     return {point, normal};
 }

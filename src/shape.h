@@ -44,11 +44,12 @@ struct sample_on_shape_op {
     PointAndNormal operator()(const Sphere &s) const;
     PointAndNormal operator()(const Triangle &s) const;
 
+    const Vector3 &ref_pos;
     std::mt19937& rng;
 };
 
-inline PointAndNormal sample_on_shape(const Shape& shape, std::mt19937& rng) {
-    return std::visit(sample_on_shape_op{rng}, shape);
+inline PointAndNormal sample_on_shape(const Shape& shape, const Vector3 &ref_pos, std::mt19937& rng) {
+    return std::visit(sample_on_shape_op{ref_pos, rng}, shape);
 }
 
 struct get_area_op {

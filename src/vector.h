@@ -306,6 +306,10 @@ inline std::ostream& operator<<(std::ostream &os, const TVector3<T> &v) {
     return os << "(" << v[0] << ", " << v[1] << ", " << v[2] << ")";
 }
 
+inline Real luminance(const Vector3 &s) {
+    return s.x * Real(0.212671) + s.y * Real(0.715160) + s.z * Real(0.072169);
+}
+
 // https://backend.orbit.dtu.dk/ws/portalfiles/portal/126824972/onb_frisvad_jgt2012_v2.pdf
 inline Vector3 to_world(const Vector3 &n, const Vector3 &v) {
     Vector3 x, y;
