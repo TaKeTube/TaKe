@@ -9,11 +9,11 @@ set(CMAKE_CXX_STANDARD_REQUIRED True)
 
 set(CMAKE_BUILD_TYPE RelWithDebInfo)
 
-if(MSVC)
-  add_compile_options(/Wall)
-else()
-  add_compile_options(-Wall)
-endif()
+# if(MSVC)
+#   add_compile_options(/Wall)
+# else()
+#   add_compile_options(-Wall)
+# endif()
 
 include_directories(${CMAKE_SOURCE_DIR}/src)
 

@@ -33,11 +33,10 @@ Real sample_bsdf_pdf_op::operator()(const Phong &m) const {
     Vector3 n = dot(dir_in, v.shading_normal) < 0 ? -v.shading_normal : v.shading_normal;
 
     Vector3 reflect_dir = normalize(-dir_in + 2*dot(dir_in, n) * n);
-    SampleRecord record;
     if (dot(v.geo_normal, dir_out) < 0) 
-        record.pdf = Real(0);
+        return Real(0);
     else
-        record.pdf = fmax(Real(0), (m.exponent + 1) / c_TWOPI * pow(dot(reflect_dir, dir_out), m.exponent));
+        return fmax(Real(0), (m.exponent + 1) / c_TWOPI * pow(dot(reflect_dir, dir_out), m.exponent));
 }
 
 Vector3 eval_material_op::operator()(const Phong &m) const{

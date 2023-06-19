@@ -281,27 +281,65 @@ void build_bvh(Scene& scene) {
 }
 
 std::optional<Intersection> bvh_intersect(const Scene &scene, const BVHNode &node, Ray ray) {
-    if (node.primitive_id != -1) {
-        return std::visit(intersect_op{ray}, scene.shapes[node.primitive_id]);
-    }
-    const BVHNode &left = scene.bvh_nodes[node.left_node_id];
-    const BVHNode &right = scene.bvh_nodes[node.right_node_id];
-    std::optional<Intersection> isect_left;
-    if (intersect(left.box, ray)) {
-        isect_left = bvh_intersect(scene, left, ray);
-        if (isect_left) {
-            ray.tmax = isect_left->t;
+    // Tested on party_bgonly.xml, traverse version is faster than recursive version by around 2-3 s
+
+    // Recursive version
+
+    // if (node.primitive_id != -1) {
+    //     return std::visit(intersect_op{ray}, scene.shapes[node.primitive_id]);
+    // }
+    // const BVHNode &left = scene.bvh_nodes[node.left_node_id];
+    // const BVHNode &right = scene.bvh_nodes[node.right_node_id];
+    // std::optional<Intersection> isect_left;
+    // if (intersect(left.box, ray)) {
+    //     isect_left = bvh_intersect(scene, left, ray);
+    //     if (isect_left) {
+    //         ray.tmax = isect_left->t;
+    //     }
+    // }
+    // if (intersect(right.box, ray)) {
+    //     // Since we've already set ray.tfar to the left node
+    //     // if we still hit something on the right, it's closer
+    //     // and we should return that.
+    //     if (auto isect_right = bvh_intersect(scene, right, ray)) {
+    //         return isect_right;
+    //     }
+    // }
+    // return isect_left;
+
+    // Traverse version
+    int node_ptr = 0;
+    bool is_left = true;
+    std::optional<Intersection> intersection;
+    intersection->t = infinity<Real>();
+    unsigned int bvhStack[64];
+    bvhStack[++node_ptr] = scene.bvh_root_id;
+
+    while(node_ptr)
+    {
+        BVHNode curr_node = scene.bvh_nodes[bvhStack[node_ptr--]];
+
+        if(!intersect(curr_node.box, ray))
+            continue;
+        
+        if(curr_node.primitive_id != -1)
+        {
+            std::optional<Intersection> temp_intersection = std::visit(intersect_op{ray}, scene.shapes[curr_node.primitive_id]);
+            if(temp_intersection && temp_intersection->t < intersection->t){
+                intersection = std::move(temp_intersection);
+                if(is_left && intersection->t < ray.tmax) ray.tmax = intersection->t;
+            }
+            if(temp_intersection)
+                is_left = false;
+        }
+        else
+        {
+            bvhStack[++node_ptr] = curr_node.right_node_id;
+            bvhStack[++node_ptr] = curr_node.left_node_id;
+            is_left = true;
         }
     }
-    if (intersect(right.box, ray)) {
-        // Since we've already set ray.tfar to the left node
-        // if we still hit something on the right, it's closer
-        // and we should return that.
-        if (auto isect_right = bvh_intersect(scene, right, ray)) {
-            return isect_right;
-        }
-    }
-    return isect_left;
+    return std::isfinite<Real>(intersection->t) ? intersection : std::nullopt;
 }
 
 std::optional<Intersection> scene_intersect(const Scene& scene, const Ray& r){
