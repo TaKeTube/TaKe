@@ -4,8 +4,8 @@ std::optional<SampleRecord> sample_bsdf_op::operator()(const Phong &m) const {
     }
     Vector3 n = dot(dir_in, v.shading_normal) < 0 ? -v.shading_normal : v.shading_normal;
 
-    Real u1 = random_double(rng);
-    Real u2 = random_double(rng);
+    Real u1 = random_real(rng);
+    Real u2 = random_real(rng);
 
     Real reciprocal_alpha_1 = 1 / (m.exponent + 1);
     Real phi = c_TWOPI * u2;

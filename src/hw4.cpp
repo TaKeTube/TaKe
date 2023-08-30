@@ -69,8 +69,8 @@ Image3 hw_4_1(const std::vector<std::string> &params) {
                 for (int i = 0; i < scene.options.spp; i++){
                     Ray r = {cam.lookfrom,
                             normalize(
-                            u * ((x + random_double(rng)) / img.width - Real(0.5)) * viewport_width +
-                            v * ((y + random_double(rng)) / img.height - Real(0.5)) * viewport_height -
+                            u * ((x + random_real(rng)) / img.width - Real(0.5)) * viewport_width +
+                            v * ((y + random_real(rng)) / img.height - Real(0.5)) * viewport_height -
                             w),
                             c_EPSILON,
                             infinity<Real>()};
@@ -150,8 +150,8 @@ Image3 hw_4_2(const std::vector<std::string> &params) {
                 for (int i = 0; i < scene.options.spp; i++){
                     Ray r = {cam.lookfrom,
                             normalize(
-                            u * ((x + random_double(rng)) / img.width - Real(0.5)) * viewport_width +
-                            v * ((y + random_double(rng)) / img.height - Real(0.5)) * viewport_height -
+                            u * ((x + random_real(rng)) / img.width - Real(0.5)) * viewport_width +
+                            v * ((y + random_real(rng)) / img.height - Real(0.5)) * viewport_height -
                             w),
                             c_EPSILON,
                             infinity<Real>()};
@@ -231,8 +231,8 @@ Image3 hw_4_3(const std::vector<std::string> &params) {
                 for (int i = 0; i < scene.options.spp; i++){
                     Ray r = {cam.lookfrom,
                             normalize(
-                            u * ((x + random_double(rng)) / img.width - Real(0.5)) * viewport_width +
-                            v * ((y + random_double(rng)) / img.height - Real(0.5)) * viewport_height -
+                            u * ((x + random_real(rng)) / img.width - Real(0.5)) * viewport_width +
+                            v * ((y + random_real(rng)) / img.height - Real(0.5)) * viewport_height -
                             w),
                             c_EPSILON,
                             infinity<Real>()};
@@ -311,8 +311,8 @@ Image3 hw_4_4(const std::vector<std::string> &params) {
                 for (int i = 0; i < scene.options.spp; i++){
                     Ray r = {cam.lookfrom,
                             normalize(
-                            u * ((x + random_double(rng)) / img.width - Real(0.5)) * viewport_width +
-                            v * ((y + random_double(rng)) / img.height - Real(0.5)) * viewport_height -
+                            u * ((x + random_real(rng)) / img.width - Real(0.5)) * viewport_width +
+                            v * ((y + random_real(rng)) / img.height - Real(0.5)) * viewport_height -
                             w),
                             c_EPSILON,
                             infinity<Real>()};

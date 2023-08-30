@@ -453,7 +453,7 @@ Vector3 trace_ray_MIS(const Scene& scene, const Ray& ray, std::mt19937& rng){
         if(std::holds_alternative<Plastic>(m) || std::holds_alternative<Mirror>(m))
             is_specular = true;
         
-        if(scene.lights.size() > 0 && !is_specular && random_double(rng) <= 0.5){
+        if(scene.lights.size() > 0 && !is_specular && random_real(rng) <= 0.5){
             // Sampling Light
             int light_id = sample_light(scene, rng);
             auto light = scene.lights[light_id];
@@ -489,7 +489,7 @@ Vector3 trace_ray_MIS(const Scene& scene, const Ray& ray, std::mt19937& rng){
                 if(v.area_light_id == -1){
                     break;
                 }
-                throughput *= FG / (0.5 * light_pdf + 0.5 * bsdf_pdf);
+                throughput *= FG / (Real(0.5) * light_pdf + Real(0.5) * bsdf_pdf);
             }
         }else{
             // Sampling bsdf
@@ -562,7 +562,7 @@ Vector3 trace_ray_MIS_power(const Scene& scene, const Ray& ray, std::mt19937& rn
         if(std::holds_alternative<Plastic>(m) || std::holds_alternative<Mirror>(m))
             is_specular = true;
         
-        if(scene.lights.size() > 0 && !is_specular && random_double(rng) <= 0.5){
+        if(scene.lights.size() > 0 && !is_specular && random_real(rng) <= 0.5){
             // Sampling Light
             int light_id = sample_light_power(scene, rng);
             auto light = scene.lights[light_id];
@@ -598,7 +598,7 @@ Vector3 trace_ray_MIS_power(const Scene& scene, const Ray& ray, std::mt19937& rn
                 if(v.area_light_id == -1){
                     break;
                 }
-                throughput *= FG / (0.5 * light_pdf + 0.5 * bsdf_pdf);
+                throughput *= FG / (Real(0.5) * light_pdf + Real(0.5) * bsdf_pdf);
             }
         }else{
             // Sampling bsdf

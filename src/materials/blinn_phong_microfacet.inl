@@ -4,8 +4,8 @@ std::optional<SampleRecord> sample_bsdf_op::operator()(const BlinnPhongMicroface
     }
     Vector3 n = dot(dir_in, v.shading_normal) < 0 ? -v.shading_normal : v.shading_normal;
 
-    Real u1 = random_double(rng);
-    Real u2 = random_double(rng);
+    Real u1 = random_real(rng);
+    Real u2 = random_real(rng);
 
     Real reciprocal_alpha_1 = 1 / (m.exponent + 1);
     Real phi = c_TWOPI * u2;
@@ -51,10 +51,10 @@ Vector3 eval_material_op::operator()(const BlinnPhongMicrofacet &m) const{
     else{
         const Vector3& Ks = eval(m.reflectance, v.uv, texture_pool);
         
-        Vector3 Fh = Ks + (1 - Ks) * pow(1 - dot(h, record.dir_out), 5);
+        Vector3 Fh = Ks + (1 - Ks) * Real(pow(1 - dot(h, record.dir_out), 5));
         Real Dh = (m.exponent + 2) * c_INVTWOPI * pow(std::clamp(dot(n, h), Real(0), Real(1)), m.exponent);
         Real G = compute_blinn_phong_G_hat(record.dir_out, n, m.exponent) * compute_blinn_phong_G_hat(dir_in, n, m.exponent);
 
-        return Fh * Dh * G * 0.25 / dot(n, dir_in);
+        return Fh * Dh * G * Real(0.25) / dot(n, dir_in);
     }
 }

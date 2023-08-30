@@ -3,12 +3,12 @@
 #include <algorithm>
 
 int sample_light(const Scene &scene, std::mt19937& rng) {
-    return floor(random_double(rng) * scene.lights.size());
+    return floor(random_real(rng) * scene.lights.size());
 }
 
 int sample_light_power(const Scene &scene, std::mt19937& rng) {
     const std::vector<Real> &power_cdf = scene.lights_power_cdf;
-    Real u = random_double(rng);
+    Real u = random_real(rng);
     int size = power_cdf.size() - 1;
     assert(size > 0);
     const Real *ptr = std::upper_bound(power_cdf.data(), power_cdf.data() + size + 1, u);

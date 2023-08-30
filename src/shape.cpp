@@ -110,8 +110,8 @@ std::optional<Intersection> intersect_op::operator()(const Triangle& tri) const 
 }
 
 // PointAndNormal sample_on_shape_op::operator()(const Sphere &s) const {
-//     Real u1 = random_double(rng);
-//     Real u2 = random_double(rng);
+//     Real u1 = random_real(rng);
+//     Real u2 = random_real(rng);
     
 //     Vector3 normal = normalize(Vector3{
 //         2 * cos(2 * c_PI * u2) * sqrt(u1 * (1 - u1)),
@@ -123,8 +123,8 @@ std::optional<Intersection> intersect_op::operator()(const Triangle& tri) const 
 // }
 
 PointAndNormal sample_on_shape_op::operator()(const Sphere &s) const {
-    Real u1 = random_double(rng);
-    Real u2 = random_double(rng);
+    Real u1 = random_real(rng);
+    Real u2 = random_real(rng);
 
     Real r = s.radius;
     Real d = length(s.center - ref_pos);
@@ -151,8 +151,8 @@ PointAndNormal sample_on_shape_op::operator()(const Triangle &t) const {
     Vector3 v1 = mesh.positions.at(indices.y);
     Vector3 v2 = mesh.positions.at(indices.z);
 
-    Real u1 = random_double(rng);
-    Real u2 = random_double(rng);
+    Real u1 = random_real(rng);
+    Real u2 = random_real(rng);
 
     Real b1 = 1 - sqrt(u1);
     Real b2 = sqrt(u1) * u2;

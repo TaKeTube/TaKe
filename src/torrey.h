@@ -25,18 +25,20 @@
 // Switching to floating point computation is easy --
 // just set Real = float.
 using Real = double;
+// using Real = float;
 
 const Real c_EPSILON = 1e-7;
+// const Real c_EPSILON = 1e-4;
 
 // Lots of PIs!
-const Real c_PI = Real(3.14159265358979323846);
-const Real c_INVPI = Real(1.0) / c_PI;
-const Real c_TWOPI = Real(2.0) * c_PI;
-const Real c_INVTWOPI = Real(1.0) / c_TWOPI;
-const Real c_FOURPI = Real(4.0) * c_PI;
-const Real c_INVFOURPI = Real(1.0) / c_FOURPI;
-const Real c_PIOVERTWO = Real(0.5) * c_PI;
-const Real c_PIOVERFOUR = Real(0.25) * c_PI;
+constexpr Real c_PI = Real(3.14159265358979323846);
+constexpr Real c_INVPI = Real(1.0) / c_PI;
+constexpr Real c_TWOPI = Real(2.0) * c_PI;
+constexpr Real c_INVTWOPI = Real(1.0) / c_TWOPI;
+constexpr Real c_FOURPI = Real(4.0) * c_PI;
+constexpr Real c_INVFOURPI = Real(1.0) / c_FOURPI;
+constexpr Real c_PIOVERTWO = Real(0.5) * c_PI;
+constexpr Real c_PIOVERFOUR = Real(0.25) * c_PI;
 
 template <typename T>
 inline T infinity() {
@@ -84,10 +86,10 @@ inline Real degrees(const Real rad) {
     return (Real(180) / c_PI) * rad;
 }
 
-inline double random_double(std::mt19937 &rng) {
-    return std::uniform_real_distribution<double>{0.0, 1.0}(rng);
+inline Real random_real(std::mt19937 &rng) {
+    return std::uniform_real_distribution<Real>{0.0, 1.0}(rng);
 }
 
 inline int random_int(int min, int max, std::mt19937 &rng) {
-    return static_cast<int>(min + (max - min) * random_double(rng));
+    return static_cast<int>(min + (max - min) * random_real(rng));
 }

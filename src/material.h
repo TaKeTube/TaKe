@@ -67,8 +67,8 @@ Real get_bsdf_pdf(
     const TexturePool &pool);
 
 inline Vector3 sample_hemisphere_cos(std::mt19937& rng) {
-    Real u1 = random_double(rng);
-    Real u2 = random_double(rng);
+    Real u1 = random_real(rng);
+    Real u2 = random_real(rng);
     
     Real phi = c_TWOPI * u2;
     Real sqrt_u1 = sqrt(std::clamp(u1, Real(0), Real(1)));

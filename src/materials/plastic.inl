@@ -10,7 +10,7 @@ std::optional<SampleRecord> sample_bsdf_op::operator()(const Plastic &m) const {
     Real F0 = pow((eta - 1)/(eta + 1), 2);
     Real F = F0 + (1 - F0) * pow(1 - dot(n, reflect_dir), 5);
     
-    Real u = random_double(rng);
+    Real u = random_real(rng);
     if(u <= F){
         record.dir_out = reflect_dir;
         record.pdf = Real(1);
