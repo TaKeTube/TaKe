@@ -81,8 +81,8 @@ inline Vector3 sample_hemisphere_cos(std::mt19937& rng) {
 
 inline Real compute_blinn_phong_G_hat(Vector3 omega, Vector3 n, Real alpha) {
     Real odn = dot(omega, n);
-    Real a = sqrt(0.5 * alpha + 1)/sqrt(1/(odn * odn) - 1);
+    Real a = sqrt(Real(0.5) * alpha + 1)/sqrt(1/(odn * odn) - 1);
     Real a2 = a*a;
-    Real G_hat = a < 1.6 ? (3.535*a+2.181*a2)/(1+2.276*a+2.577*a2) : 1;
+    Real G_hat = a < Real(1.6) ? (Real(3.535)*a+Real(2.181)*a2)/(1+Real(2.276)*a+Real(2.577)*a2) : 1;
     return G_hat;
 }

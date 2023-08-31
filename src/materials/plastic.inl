@@ -7,8 +7,8 @@ std::optional<SampleRecord> sample_bsdf_op::operator()(const Plastic &m) const {
 
     Vector3 reflect_dir = -dir_in + 2*dot(dir_in, n) * n;
     Real eta = m.eta;
-    Real F0 = pow((eta - 1)/(eta + 1), 2);
-    Real F = F0 + (1 - F0) * pow(1 - dot(n, reflect_dir), 5);
+    Real F0 = pow((eta - 1)/(eta + 1), Real(2));
+    Real F = F0 + (1 - F0) * pow(1 - dot(n, reflect_dir), Real(5));
     
     Real u = random_real(rng);
     if(u <= F){
@@ -30,8 +30,8 @@ Real sample_bsdf_pdf_op::operator()(const Plastic &m) const {
     Vector3 n = dot(dir_in, v.shading_normal) < 0 ? -v.shading_normal : v.shading_normal;
 
     Real eta = m.eta;
-    Real F0 = pow((eta - 1)/(eta + 1), 2);
-    Real F = F0 + (1 - F0) * pow(1 - dot(n, dir_out), 5);
+    Real F0 = pow((eta - 1)/(eta + 1), Real(2));
+    Real F = F0 + (1 - F0) * pow(1 - dot(n, dir_out), Real(5));
     return length(normalize(dir_in + dir_out) - n) < c_EPSILON ? Real(F) : (1 - F) * fmax(dot(n, dir_out), Real(0)) / c_PI;
 }
 

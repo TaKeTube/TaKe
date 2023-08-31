@@ -23,7 +23,7 @@ std::optional<SampleRecord> sample_bsdf_op::operator()(const BlinnPhongMicroface
     if (dot(v.geo_normal, record.dir_out) <= 0 || dot(h, n) <= 0 || dot(record.dir_out, h) <= 0) 
         record.pdf = Real(0);
     else
-        record.pdf = (m.exponent + 1) * 0.25 * c_INVTWOPI * pow(std::clamp(dot(n, h), Real(0), Real(1)), m.exponent) / dot(record.dir_out, h);
+        record.pdf = (m.exponent + 1) * Real(0.25) * c_INVTWOPI * pow(std::clamp(dot(n, h), Real(0), Real(1)), m.exponent) / dot(record.dir_out, h);
     return record;
 }
 
@@ -36,7 +36,7 @@ Real sample_bsdf_pdf_op::operator()(const BlinnPhongMicrofacet &m) const {
     if (dot(v.geo_normal, dir_out) <= 0 || dot(h, n) <= 0 || dot(dir_out, h) <= 0) 
         return Real(0);
     else
-        return (m.exponent + 1) * 0.25 * c_INVTWOPI * pow(std::clamp(dot(n, h), Real(0), Real(1)), m.exponent) / dot(dir_out, h);
+        return (m.exponent + 1) * Real(0.25) * c_INVTWOPI * pow(std::clamp(dot(n, h), Real(0), Real(1)), m.exponent) / dot(dir_out, h);
 }
 
 Vector3 eval_material_op::operator()(const BlinnPhongMicrofacet &m) const{

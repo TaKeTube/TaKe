@@ -69,7 +69,7 @@ Matrix4x4 look_at(const Vector3 &pos, const Vector3 &look, const Vector3 &up) {
 }
 
 Matrix4x4 perspective(Real fov) {
-    Real cot = Real(1.0) / tan(radians(fov / 2.0));
+    Real cot = Real(1.0) / tan(radians(fov / Real(2.0)));
     return Matrix4x4(    cot, Real(0), Real(0),  Real(0),
                      Real(0),     cot, Real(0),  Real(0),
                      Real(0), Real(0), Real(1), Real(-1),

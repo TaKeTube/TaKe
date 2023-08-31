@@ -43,7 +43,7 @@ std::optional<Intersection> intersect_op::operator()(const Sphere& s) const {
 
 std::optional<Intersection> intersect_op::operator()(const Triangle& tri) const {
     const TriangleMesh &mesh = *tri.mesh;
-    const Vector3 &indices = mesh.indices.at(tri.face_index);
+    const Vector3i &indices = mesh.indices.at(tri.face_index);
 
     Vector3 v0 = mesh.positions.at(indices.x);
     Vector3 v1 = mesh.positions.at(indices.y);
@@ -58,7 +58,7 @@ std::optional<Intersection> intersect_op::operator()(const Triangle& tri) const 
     if (a > -c_EPSILON && a < c_EPSILON)
         return {};    // This ray is parallel to this triangle.
 
-    f = 1.0 / a;
+    f = Real(1.0) / a;
     s = r.origin - v0;
     u = f * dot(s, h);
 
@@ -145,7 +145,7 @@ PointAndNormal sample_on_shape_op::operator()(const Sphere &s) const {
 
 PointAndNormal sample_on_shape_op::operator()(const Triangle &t) const {
     const TriangleMesh &mesh = *t.mesh;
-    const Vector3 &indices = mesh.indices.at(t.face_index);
+    const Vector3i &indices = mesh.indices.at(t.face_index);
 
     Vector3 v0 = mesh.positions.at(indices.x);
     Vector3 v1 = mesh.positions.at(indices.y);
@@ -174,7 +174,7 @@ Real get_area_op::operator()(const Sphere &s) const {
 
 Real get_area_op::operator()(const Triangle &t) const {
     const TriangleMesh &mesh = *t.mesh;
-    const Vector3 &indices = mesh.indices.at(t.face_index);
+    const Vector3i &indices = mesh.indices.at(t.face_index);
 
     Vector3 v0 = mesh.positions.at(indices.x);
     Vector3 v1 = mesh.positions.at(indices.y);

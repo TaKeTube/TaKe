@@ -68,7 +68,7 @@ inline void debug_log(Scene& scene) {
         printf("unknown material\n");
 
     printf("scene.meshes[0].normals[0].xyz: %f %f %f\n", scene.meshes[0].normals[0].x, scene.meshes[0].normals[0].y, scene.meshes[0].normals[0].z);
-    printf("scene.num_lights: %d\n", scene.lights.size());
+    printf("scene.num_lights: %d\n", static_cast<int>(scene.lights.size()));
 
     Shape &s = scene.shapes[0];
     if(auto *ss = std::get_if<Sphere>(&s))

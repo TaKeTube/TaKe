@@ -478,7 +478,7 @@ std::tuple<std::string /* ID */, ParsedMaterial> parse_bsdf(
         id = node.attribute("id").value();
     }
     if (type == "twosided") {
-        // In torrey, all BSDFs are twosided.
+        // In take, all BSDFs are twosided.
         for (auto child : node.children()) {
             if (std::string(child.name()) == "bsdf") {
                 return parse_bsdf(child, texture_map, default_map, id);

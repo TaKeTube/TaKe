@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.10)
 
-project(lajolla)
+project(take)
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/")
 
@@ -27,8 +27,8 @@ set(SRCS src/3rdparty/miniz.h
          src/3rdparty/tinyply.h
          src/compute_normals.h
          src/flexception.h
-         src/hw4.h
-         src/hw4.cpp
+         src/render.h
+         src/render.cpp
          src/image.h
          src/matrix.h
          src/parallel.h
@@ -37,7 +37,7 @@ set(SRCS src/3rdparty/miniz.h
          src/parse_scene.h
          src/parse_serialized.h
          src/print_scene.h
-         src/torrey.h
+         src/take.h
          src/transform.h
          src/vector.h
          src/compute_normals.cpp
@@ -75,6 +75,6 @@ set(SRCS src/3rdparty/miniz.h
          src/materials/blinn_phong_microfacet.inl
          )
 
-add_library(torrey_lib STATIC ${SRCS})
-add_executable(torrey src/main.cpp)
-target_link_libraries(torrey torrey_lib)
+add_library(take_lib STATIC ${SRCS})
+add_executable(take src/main.cpp)
+target_link_libraries(take take_lib)

@@ -9,9 +9,9 @@ Vector3 eval_texture_op::operator()(const ImageTexture &t) const {
     Real x = img.width * modulo(t.uscale * uv.x + t.uoffset, Real(1));
     Real y = img.height * modulo(t.vscale * uv.y + t.voffset, Real(1));
     // Bilinear Interpolation
-    int x1 = floor(x);
+    int x1 = static_cast<int>(floor(x));
     int x2 = (x1 + 1) == img.width ? 0 : (x1 + 1);
-    int y1 = floor(y);
+    int y1 = static_cast<int>(floor(y));
     int y2 = (y1 + 1) == img.height ? 0 : (y1 + 1);
     Vector3 q11 = img(x1, y1);
     Vector3 q12 = img(x1, y2);

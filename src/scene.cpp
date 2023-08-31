@@ -66,7 +66,7 @@ Scene::Scene(const ParsedScene &scene) : camera(from_parsed_camera(scene.camera)
                 if (it != textures.image3s_map.end()) {
                     texture_id = textures.image3s_map.at(texture_name);
                 } else {
-                    texture_id = textures.image3s.size();
+                    texture_id = static_cast<int>(textures.image3s.size());
                     textures.image3s_map.emplace(texture_name, texture_id);
                     textures.image3s.push_back(imread3(color->filename));
                 }
@@ -90,7 +90,7 @@ Scene::Scene(const ParsedScene &scene) : camera(from_parsed_camera(scene.camera)
                 if (it != textures.image3s_map.end()) {
                     texture_id = textures.image3s_map.at(texture_name);
                 } else {
-                    texture_id = textures.image3s.size();
+                    texture_id = static_cast<int>(textures.image3s.size());
                     textures.image3s_map.emplace(texture_name, texture_id);
                     textures.image3s.push_back(imread3(color->filename));
                 }
@@ -114,7 +114,7 @@ Scene::Scene(const ParsedScene &scene) : camera(from_parsed_camera(scene.camera)
                 if (it != textures.image3s_map.end()) {
                     texture_id = textures.image3s_map.at(texture_name);
                 } else {
-                    texture_id = textures.image3s.size();
+                    texture_id = static_cast<int>(textures.image3s.size());
                     textures.image3s_map.emplace(texture_name, texture_id);
                     textures.image3s.push_back(imread3(color->filename));
                 }
@@ -138,7 +138,7 @@ Scene::Scene(const ParsedScene &scene) : camera(from_parsed_camera(scene.camera)
                 if (it != textures.image3s_map.end()) {
                     texture_id = textures.image3s_map.at(texture_name);
                 } else {
-                    texture_id = textures.image3s.size();
+                    texture_id = static_cast<int>(textures.image3s.size());
                     textures.image3s_map.emplace(texture_name, texture_id);
                     textures.image3s.push_back(imread3(color->filename));
                 }
@@ -162,7 +162,7 @@ Scene::Scene(const ParsedScene &scene) : camera(from_parsed_camera(scene.camera)
                 if (it != textures.image3s_map.end()) {
                     texture_id = textures.image3s_map.at(texture_name);
                 } else {
-                    texture_id = textures.image3s.size();
+                    texture_id = static_cast<int>(textures.image3s.size());
                     textures.image3s_map.emplace(texture_name, texture_id);
                     textures.image3s.push_back(imread3(color->filename));
                 }
@@ -186,7 +186,7 @@ Scene::Scene(const ParsedScene &scene) : camera(from_parsed_camera(scene.camera)
                 if (it != textures.image3s_map.end()) {
                     texture_id = textures.image3s_map.at(texture_name);
                 } else {
-                    texture_id = textures.image3s.size();
+                    texture_id = static_cast<int>(textures.image3s.size());
                     textures.image3s_map.emplace(texture_name, texture_id);
                     textures.image3s.push_back(imread3(color->filename));
                 }
@@ -221,7 +221,7 @@ Scene::Scene(const ParsedScene &scene) : camera(from_parsed_camera(scene.camera)
         if (area_light_id == -1)
             continue;
         if (auto *area_light = std::get_if<ParsedDiffuseAreaLight>(&scene.lights.at(area_light_id))) {
-            int new_light_id = lights.size();
+            int new_light_id = static_cast<int>(lights.size());
             lights.push_back(DiffuseAreaLight{i, area_light->radiance});
             if (auto *sph = std::get_if<Sphere>(&shape)) {
                 sph->area_light_id = new_light_id;
@@ -510,7 +510,7 @@ Vector3 trace_ray_MIS(const Scene& scene, const Ray& ray, std::mt19937& rng){
             r = Ray{v.pos, dir_out, c_EPSILON, infinity<Real>()};
             std::optional<Intersection> new_v_ = scene_intersect(scene, r);
 
-            Real pdf = (scene.lights.empty() || is_specular) ? bsdf_pdf : 0.5 * bsdf_pdf;
+            Real pdf = (scene.lights.empty() || is_specular) ? bsdf_pdf : Real(0.5) * bsdf_pdf;
 
             if(!new_v_){
                 // std::cout << "bg break" << std::endl;
@@ -527,7 +527,7 @@ Vector3 trace_ray_MIS(const Scene& scene, const Ray& ray, std::mt19937& rng){
                     // std::cout << dot(-new_v_->geo_normal, light_dir) << std::endl;
                     break;
                 }
-                pdf += 0.5 * light_pdf;
+                pdf += Real(0.5) * light_pdf;
             }
             throughput *= FG / pdf;
             v = *new_v_;
@@ -619,7 +619,7 @@ Vector3 trace_ray_MIS_power(const Scene& scene, const Ray& ray, std::mt19937& rn
             r = Ray{v.pos, dir_out, c_EPSILON, infinity<Real>()};
             std::optional<Intersection> new_v_ = scene_intersect(scene, r);
 
-            Real pdf = (scene.lights.empty() || is_specular) ? bsdf_pdf : 0.5 * bsdf_pdf;
+            Real pdf = (scene.lights.empty() || is_specular) ? bsdf_pdf : Real(0.5) * bsdf_pdf;
 
             if(!new_v_){
                 // std::cout << "bg break" << std::endl;
@@ -636,7 +636,7 @@ Vector3 trace_ray_MIS_power(const Scene& scene, const Ray& ray, std::mt19937& rn
                     // std::cout << dot(-new_v_->geo_normal, light_dir) << std::endl;
                     break;
                 }
-                pdf += 0.5 * light_pdf;
+                pdf += Real(0.5) * light_pdf;
             }
             throughput *= FG / pdf;
             v = *new_v_;
