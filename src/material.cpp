@@ -7,6 +7,12 @@ struct sample_bsdf_op{
     std::optional<SampleRecord> operator()(const Phong &m) const;
     std::optional<SampleRecord> operator()(const BlinnPhong &m) const;
     std::optional<SampleRecord> operator()(const BlinnPhongMicrofacet &m) const;
+    std::optional<SampleRecord> operator()(const DisneyDiffuse &m) const;
+    std::optional<SampleRecord> operator()(const DisneyMetal &m) const;
+    std::optional<SampleRecord> operator()(const DisneyGlass &m) const;
+    std::optional<SampleRecord> operator()(const DisneyClearcoat &m) const;
+    std::optional<SampleRecord> operator()(const DisneySheen &m) const;
+    std::optional<SampleRecord> operator()(const DisneyBSDF &m) const;
 
     const Vector3 &dir_in;
     const Intersection &v;
@@ -21,6 +27,12 @@ struct sample_bsdf_pdf_op{
     Real operator()(const Phong &m) const;
     Real operator()(const BlinnPhong &m) const;
     Real operator()(const BlinnPhongMicrofacet &m) const;
+    Real operator()(const DisneyDiffuse &m) const;
+    Real operator()(const DisneyMetal &m) const;
+    Real operator()(const DisneyGlass &m) const;
+    Real operator()(const DisneyClearcoat &m) const;
+    Real operator()(const DisneySheen &m) const;
+    Real operator()(const DisneyBSDF &m) const;
 
     const Vector3 &dir_in;
     const Vector3 &dir_out;
@@ -35,6 +47,12 @@ struct eval_material_op{
     Vector3 operator()(const Phong &m) const;
     Vector3 operator()(const BlinnPhong &m) const;
     Vector3 operator()(const BlinnPhongMicrofacet &m) const;
+    Vector3 operator()(const DisneyDiffuse &m) const;
+    Vector3 operator()(const DisneyMetal &m) const;
+    Vector3 operator()(const DisneyGlass &m) const;
+    Vector3 operator()(const DisneyClearcoat &m) const;
+    Vector3 operator()(const DisneySheen &m) const;
+    Vector3 operator()(const DisneyBSDF &m) const;
 
     const Vector3 &dir_in;
     const SampleRecord &record;
@@ -48,6 +66,12 @@ struct eval_material_op{
 #include "materials/phong.inl"
 #include "materials/blinn_phong.inl"
 #include "materials/blinn_phong_microfacet.inl"
+#include "materials/disney_diffuse.inl"
+#include "materials/disney_metal.inl"
+#include "materials/disney_glass.inl"
+#include "materials/disney_clearcoat.inl"
+#include "materials/disney_sheen.inl"
+#include "materials/disney_bsdf.inl"
 
 std::optional<SampleRecord> sample_bsdf(const Material &material,
                                         const Vector3 &dir_in,

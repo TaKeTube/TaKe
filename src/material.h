@@ -33,12 +33,64 @@ struct BlinnPhongMicrofacet {
     Real exponent; // alpha
 };
 
+struct DisneyDiffuse {
+    Texture reflectance;
+    Real roughness;
+    Real subsurface;
+};
+
+struct DisneyMetal {
+    Texture reflectance;
+    Real roughness;
+    Real anisotropic;
+};
+
+struct DisneyGlass {
+    Texture reflectance;
+    Real roughness;
+    Real anisotropic;
+
+    Real eta; // internal IOR / externalIOR
+};
+
+struct DisneyClearcoat {
+    Real clearcoat_gloss;
+};
+
+struct DisneySheen {
+    Texture reflectance;
+    Real sheen_tint;
+};
+
+struct DisneyBSDF {
+    Texture reflectance;
+    Real specular_transmission;
+    Real metallic;
+    Real subsurface;
+    Real specular;
+    Real roughness;
+    Real specular_tint;
+    Real anisotropic;
+    Real sheen;
+    Real sheen_tint;
+    Real clearcoat;
+    Real clearcoat_gloss;
+
+    Real eta;
+};
+
 using Material = std::variant<Diffuse,
                               Mirror,
                               Plastic,
                               Phong,
                               BlinnPhong,
-                              BlinnPhongMicrofacet>;
+                              BlinnPhongMicrofacet,
+                              DisneyDiffuse,
+                              DisneyMetal,
+                              DisneyGlass,
+                              DisneyClearcoat,
+                              DisneySheen,
+                              DisneyBSDF>;
 
 struct SampleRecord {
     Vector3 dir_out;

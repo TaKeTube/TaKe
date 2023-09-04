@@ -51,7 +51,26 @@ Scene::Scene(const ParsedScene &scene) : camera(from_parsed_camera(scene.camera)
             assert(false);
         }
     }
+    
     // Copy the materials
+    auto get_texture = [&](const ParsedImageTexture *color){
+        std::string texture_name = color->filename.string();
+        int texture_id;
+        auto it = textures.image3s_map.find(texture_name);
+        if (it != textures.image3s_map.end()) {
+            texture_id = textures.image3s_map.at(texture_name);
+        } else {
+            texture_id = static_cast<int>(textures.image3s.size());
+            textures.image3s_map.emplace(texture_name, texture_id);
+            textures.image3s.push_back(imread3(color->filename));
+        }
+        return ImageTexture{
+            texture_id,
+            color->uscale, color->vscale,
+            color->uoffset, color->voffset,
+        };
+    };
+    
     for (const ParsedMaterial &parsed_mat : scene.materials)
     {
         if (auto *diffuse = std::get_if<ParsedDiffuse>(&parsed_mat))
@@ -60,21 +79,7 @@ Scene::Scene(const ParsedScene &scene) : camera(from_parsed_camera(scene.camera)
                 ConstTexture texture = {*color};
                 materials.push_back(Diffuse{texture});
             } else if (auto *color = std::get_if<ParsedImageTexture>(&diffuse->reflectance)) {
-                std::string texture_name = color->filename.string();
-                int texture_id;
-                auto it = textures.image3s_map.find(texture_name);
-                if (it != textures.image3s_map.end()) {
-                    texture_id = textures.image3s_map.at(texture_name);
-                } else {
-                    texture_id = static_cast<int>(textures.image3s.size());
-                    textures.image3s_map.emplace(texture_name, texture_id);
-                    textures.image3s.push_back(imread3(color->filename));
-                }
-                ImageTexture texture = {
-                    texture_id,
-                    color->uscale, color->vscale,
-                    color->uoffset, color->voffset,
-                };
+                ImageTexture texture = get_texture(color);
                 materials.push_back(Diffuse{texture});
             }
         }
@@ -84,21 +89,7 @@ Scene::Scene(const ParsedScene &scene) : camera(from_parsed_camera(scene.camera)
                 ConstTexture texture = {*color};
                 materials.push_back(Mirror{texture});
             } else if (auto *color = std::get_if<ParsedImageTexture>(&mirror->reflectance)) {
-                std::string texture_name = color->filename.string();
-                int texture_id;
-                auto it = textures.image3s_map.find(texture_name);
-                if (it != textures.image3s_map.end()) {
-                    texture_id = textures.image3s_map.at(texture_name);
-                } else {
-                    texture_id = static_cast<int>(textures.image3s.size());
-                    textures.image3s_map.emplace(texture_name, texture_id);
-                    textures.image3s.push_back(imread3(color->filename));
-                }
-                ImageTexture texture = {
-                    texture_id,
-                    color->uscale, color->vscale,
-                    color->uoffset, color->voffset,
-                };
+                ImageTexture texture = get_texture(color);
                 materials.push_back(Mirror{texture});
             }
         }
@@ -108,21 +99,7 @@ Scene::Scene(const ParsedScene &scene) : camera(from_parsed_camera(scene.camera)
                 ConstTexture texture = {*color};
                 materials.push_back(Plastic{texture, plastic->eta});
             } else if (auto *color = std::get_if<ParsedImageTexture>(&plastic->reflectance)) {
-                std::string texture_name = color->filename.string();
-                int texture_id;
-                auto it = textures.image3s_map.find(texture_name);
-                if (it != textures.image3s_map.end()) {
-                    texture_id = textures.image3s_map.at(texture_name);
-                } else {
-                    texture_id = static_cast<int>(textures.image3s.size());
-                    textures.image3s_map.emplace(texture_name, texture_id);
-                    textures.image3s.push_back(imread3(color->filename));
-                }
-                ImageTexture texture = {
-                    texture_id,
-                    color->uscale, color->vscale,
-                    color->uoffset, color->voffset,
-                };
+                ImageTexture texture = get_texture(color);
                 materials.push_back(Plastic{texture, plastic->eta});
             }
         }
@@ -132,21 +109,7 @@ Scene::Scene(const ParsedScene &scene) : camera(from_parsed_camera(scene.camera)
                 ConstTexture texture = {*color};
                 materials.push_back(Phong{texture, phong->exponent});
             } else if (auto *color = std::get_if<ParsedImageTexture>(&phong->reflectance)) {
-                std::string texture_name = color->filename.string();
-                int texture_id;
-                auto it = textures.image3s_map.find(texture_name);
-                if (it != textures.image3s_map.end()) {
-                    texture_id = textures.image3s_map.at(texture_name);
-                } else {
-                    texture_id = static_cast<int>(textures.image3s.size());
-                    textures.image3s_map.emplace(texture_name, texture_id);
-                    textures.image3s.push_back(imread3(color->filename));
-                }
-                ImageTexture texture = {
-                    texture_id,
-                    color->uscale, color->vscale,
-                    color->uoffset, color->voffset,
-                };
+                ImageTexture texture = get_texture(color);
                 materials.push_back(Phong{texture, phong->exponent});
             }
         }
@@ -156,21 +119,7 @@ Scene::Scene(const ParsedScene &scene) : camera(from_parsed_camera(scene.camera)
                 ConstTexture texture = {*color};
                 materials.push_back(BlinnPhong{texture, blinn_phong->exponent});
             } else if (auto *color = std::get_if<ParsedImageTexture>(&blinn_phong->reflectance)) {
-                std::string texture_name = color->filename.string();
-                int texture_id;
-                auto it = textures.image3s_map.find(texture_name);
-                if (it != textures.image3s_map.end()) {
-                    texture_id = textures.image3s_map.at(texture_name);
-                } else {
-                    texture_id = static_cast<int>(textures.image3s.size());
-                    textures.image3s_map.emplace(texture_name, texture_id);
-                    textures.image3s.push_back(imread3(color->filename));
-                }
-                ImageTexture texture = {
-                    texture_id,
-                    color->uscale, color->vscale,
-                    color->uoffset, color->voffset,
-                };
+                ImageTexture texture = get_texture(color);
                 materials.push_back(BlinnPhong{texture, blinn_phong->exponent});
             }
         }
@@ -180,22 +129,90 @@ Scene::Scene(const ParsedScene &scene) : camera(from_parsed_camera(scene.camera)
                 ConstTexture texture = {*color};
                 materials.push_back(BlinnPhongMicrofacet{texture, blinn_phong_microfacet->exponent});
             } else if (auto *color = std::get_if<ParsedImageTexture>(&blinn_phong_microfacet->reflectance)) {
-                std::string texture_name = color->filename.string();
-                int texture_id;
-                auto it = textures.image3s_map.find(texture_name);
-                if (it != textures.image3s_map.end()) {
-                    texture_id = textures.image3s_map.at(texture_name);
-                } else {
-                    texture_id = static_cast<int>(textures.image3s.size());
-                    textures.image3s_map.emplace(texture_name, texture_id);
-                    textures.image3s.push_back(imread3(color->filename));
-                }
-                ImageTexture texture = {
-                    texture_id,
-                    color->uscale, color->vscale,
-                    color->uoffset, color->voffset,
-                };
+                ImageTexture texture = get_texture(color);
                 materials.push_back(BlinnPhongMicrofacet{texture, blinn_phong_microfacet->exponent});
+            }
+        }
+        else if (auto *disney_diffuse = std::get_if<ParsedDisneyDiffuse>(&parsed_mat))
+        {
+            if (auto *color = std::get_if<Vector3>(&disney_diffuse->reflectance)) {
+                ConstTexture texture = {*color};
+                materials.push_back(DisneyDiffuse{texture, disney_diffuse->roughness, disney_diffuse->subsurface});
+            } else if (auto *color = std::get_if<ParsedImageTexture>(&disney_diffuse->reflectance)) {
+                ImageTexture texture = get_texture(color);
+                materials.push_back(DisneyDiffuse{texture, disney_diffuse->roughness, disney_diffuse->subsurface});
+            }
+        }
+        else if (auto *disney_metal = std::get_if<ParsedDisneyMetal>(&parsed_mat))
+        {
+            if (auto *color = std::get_if<Vector3>(&disney_metal->reflectance)) {
+                ConstTexture texture = {*color};
+                materials.push_back(DisneyMetal{texture, disney_metal->roughness, disney_metal->anisotropic});
+            } else if (auto *color = std::get_if<ParsedImageTexture>(&disney_metal->reflectance)) {
+                ImageTexture texture = get_texture(color);
+                materials.push_back(DisneyMetal{texture, disney_metal->roughness, disney_metal->anisotropic});
+            }
+        }
+        else if (auto *disney_glass = std::get_if<ParsedDisneyGlass>(&parsed_mat))
+        {
+            if (auto *color = std::get_if<Vector3>(&disney_glass->reflectance)) {
+                ConstTexture texture = {*color};
+                materials.push_back(DisneyGlass{texture, disney_glass->roughness, disney_glass->anisotropic, disney_glass->eta});
+            } else if (auto *color = std::get_if<ParsedImageTexture>(&disney_glass->reflectance)) {
+                ImageTexture texture = get_texture(color);
+                materials.push_back(DisneyGlass{texture, disney_glass->roughness, disney_glass->anisotropic, disney_glass->eta});
+            }
+        }
+        else if (auto *disney_clearcoat = std::get_if<ParsedDisneyClearcoat>(&parsed_mat))
+        {
+            materials.push_back(DisneyClearcoat{disney_clearcoat->clearcoat_gloss});
+        }
+        else if (auto *disney_sheen = std::get_if<ParsedDisneySheen>(&parsed_mat))
+        {
+            if (auto *color = std::get_if<Vector3>(&disney_sheen->reflectance)) {
+                ConstTexture texture = {*color};
+                materials.push_back(DisneyGlass{texture, disney_sheen->sheen_tint});
+            } else if (auto *color = std::get_if<ParsedImageTexture>(&disney_sheen->reflectance)) {
+                ImageTexture texture = get_texture(color);
+                materials.push_back(DisneyGlass{texture, disney_sheen->sheen_tint});
+            }
+        }
+        else if (auto *disney_bsdf = std::get_if<ParsedDisneyBSDF>(&parsed_mat))
+        {
+            if (auto *color = std::get_if<Vector3>(&disney_bsdf->reflectance)) {
+                ConstTexture texture = {*color};
+                materials.push_back(DisneyBSDF{
+                    texture,
+                    disney_bsdf->specular_transmission,
+                    disney_bsdf->metallic,
+                    disney_bsdf->subsurface,
+                    disney_bsdf->specular,
+                    disney_bsdf->roughness,
+                    disney_bsdf->specular_tint,
+                    disney_bsdf->anisotropic,
+                    disney_bsdf->sheen,
+                    disney_bsdf->sheen_tint,
+                    disney_bsdf->clearcoat,
+                    disney_bsdf->clearcoat_gloss,
+                    disney_bsdf->eta
+                });
+            } else if (auto *color = std::get_if<ParsedImageTexture>(&disney_bsdf->reflectance)) {
+                ImageTexture texture = get_texture(color);
+                materials.push_back(DisneyBSDF{
+                    texture,
+                    disney_bsdf->specular_transmission,
+                    disney_bsdf->metallic,
+                    disney_bsdf->subsurface,
+                    disney_bsdf->specular,
+                    disney_bsdf->roughness,
+                    disney_bsdf->specular_tint,
+                    disney_bsdf->anisotropic,
+                    disney_bsdf->sheen,
+                    disney_bsdf->sheen_tint,
+                    disney_bsdf->clearcoat,
+                    disney_bsdf->clearcoat_gloss,
+                    disney_bsdf->eta
+                });
             }
         }
         else

@@ -51,12 +51,64 @@ struct ParsedBlinnPhongMicrofacet {
     Real exponent; // alpha
 };
 
+struct ParsedDisneyDiffuse {
+    ParsedColor reflectance;
+    Real roughness;
+    Real subsurface;
+};
+
+struct ParsedDisneyMetal {
+    ParsedColor reflectance;
+    Real roughness;
+    Real anisotropic;
+};
+
+struct ParsedDisneyGlass {
+    ParsedColor reflectance;
+    Real roughness;
+    Real anisotropic;
+
+    Real eta; // internal IOR / externalIOR
+};
+
+struct ParsedDisneyClearcoat {
+    Real clearcoat_gloss;
+};
+
+struct ParsedDisneySheen {
+    ParsedColor reflectance;
+    Real sheen_tint;
+};
+
+struct ParsedDisneyBSDF {
+    ParsedColor reflectance;
+    Real specular_transmission;
+    Real metallic;
+    Real subsurface;
+    Real specular;
+    Real roughness;
+    Real specular_tint;
+    Real anisotropic;
+    Real sheen;
+    Real sheen_tint;
+    Real clearcoat;
+    Real clearcoat_gloss;
+
+    Real eta;
+};
+
 using ParsedMaterial = std::variant<ParsedDiffuse,
                                     ParsedMirror,
                                     ParsedPlastic,
                                     ParsedPhong,
                                     ParsedBlinnPhong,
-                                    ParsedBlinnPhongMicrofacet>;
+                                    ParsedBlinnPhongMicrofacet,
+                                    ParsedDisneyDiffuse,
+                                    ParsedDisneyMetal,
+                                    ParsedDisneyGlass,
+                                    ParsedDisneyClearcoat,
+                                    ParsedDisneySheen,
+                                    ParsedDisneyBSDF>;
 
 struct ParsedPointLight {
     Vector3 position;
