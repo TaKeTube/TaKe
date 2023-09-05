@@ -27,6 +27,7 @@ struct sample_on_light_op {
     std::mt19937& rng;
 };
 
+Real light_power(const Scene &scene, const Light &light);
 int sample_light(const Scene &scene, std::mt19937& rng);
 int sample_light_power(const Scene &scene, std::mt19937& rng);
 Real get_light_pmf(const Scene &scene, int id);

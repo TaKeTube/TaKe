@@ -1,9 +1,10 @@
 #include "render.h"
-#include "parse_scene.h"
+#include "parse/parse_scene.h"
 #include "scene.h"
-#include "timer.h"
 #include "parallel.h"
-#include "progressreporter.h"
+#include "utils/timer.h"
+#include "utils/progressreporter.h"
+#include "integrator/path_tracing.h"
 
 Image3 render(const std::vector<std::string> &params) {
     if (params.size() < 1) {
@@ -74,7 +75,7 @@ Image3 render(const std::vector<std::string> &params) {
                             w),
                             c_EPSILON,
                             infinity<Real>() };
-                    color += trace_ray_MIS(scene, r, rng);
+                    color += path_tracing_one_sample_MIS(scene, r, rng);
                 }
                 img(x, img.height - y - 1) = color / Real(scene.options.spp);
             }

@@ -1,5 +1,5 @@
 #include "parse_obj.h"
-#include "flexception.h"
+#include "utils/flexception.h"
 #include "transform.h"
 
 #include <fstream>

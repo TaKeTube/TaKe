@@ -25,18 +25,31 @@ set(SRCS src/3rdparty/miniz.h
          src/3rdparty/stb_image.h
          src/3rdparty/tinyexr.h
          src/3rdparty/tinyply.h
+         src/parse/parse_obj.h
+         src/parse/parse_ply.h
+         src/parse/parse_scene.h
+         src/parse/parse_serialized.h
+         src/parse/parse_obj.cpp
+         src/parse/parse_ply.cpp
+         src/parse/parse_scene.cpp
+         src/parse/parse_serialized.cpp
+         src/utils/flexception.h
+         src/utils/print_scene.cpp
+         src/utils/print_scene.h
+         src/utils/progressreporter.h
+         src/utils/timer.h
+         src/materials/diffuse.inl
+         src/materials/mirror.inl
+         src/materials/plastic.inl
+         src/materials/phong.inl
+         src/materials/blinn_phong.inl
+         src/materials/blinn_phong_microfacet.inl
          src/compute_normals.h
-         src/flexception.h
          src/render.h
          src/render.cpp
          src/image.h
          src/matrix.h
          src/parallel.h
-         src/parse_obj.h
-         src/parse_ply.h
-         src/parse_scene.h
-         src/parse_serialized.h
-         src/print_scene.h
          src/take.h
          src/transform.h
          src/vector.h
@@ -44,11 +57,6 @@ set(SRCS src/3rdparty/miniz.h
          src/image.cpp
          src/main.cpp
          src/parallel.cpp
-         src/parse_obj.cpp
-         src/parse_ply.cpp
-         src/parse_scene.cpp
-         src/parse_serialized.cpp
-         src/print_scene.cpp
          src/transform.cpp
          src/bbox.h
          src/bvh.h         
@@ -67,12 +75,6 @@ set(SRCS src/3rdparty/miniz.h
          src/shape.cpp
          src/texture.h
          src/texture.cpp
-         src/materials/diffuse.inl
-         src/materials/mirror.inl
-         src/materials/plastic.inl
-         src/materials/phong.inl
-         src/materials/blinn_phong.inl
-         src/materials/blinn_phong_microfacet.inl
          )
 
 add_library(take_lib STATIC ${SRCS})

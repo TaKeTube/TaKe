@@ -4,7 +4,7 @@
 #include "light.h"
 #include "bvh.h"
 #include "camera.h"
-#include "parse_scene.h"
+#include "parse/parse_scene.h"
 
 struct RenderOptions {
     int spp = 4;
@@ -31,13 +31,8 @@ struct Scene {
     int bvh_root_id;
 };
 
-std::optional<Intersection> bvh_intersect(const Scene &scene, const BVHNode &node, Ray ray);
 std::optional<Intersection> scene_intersect(const Scene& scene, const Ray& r);
-Real light_power(const Scene &scene, const Light &light);
 bool scene_occluded(const Scene& scene, const Ray& r);
-Vector3 trace_ray(const Scene& scene, const Ray& r, std::mt19937& rng);
-Vector3 trace_ray_MIS(const Scene& scene, const Ray& ray, std::mt19937& rng);
-Vector3 trace_ray_MIS_power(const Scene& scene, const Ray& ray, std::mt19937& rng);
 void build_bvh(Scene& scene);
 
 inline void debug_log(Scene& scene) {

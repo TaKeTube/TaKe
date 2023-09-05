@@ -1,7 +1,7 @@
 #include "parse_scene.h"
 #include "3rdparty/pugixml.hpp"
 #include "compute_normals.h"
-#include "flexception.h"
+#include "utils/flexception.h"
 #include "parse_obj.h"
 #include "parse_ply.h"
 #include "parse_serialized.h"

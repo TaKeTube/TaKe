@@ -1,6 +1,6 @@
 #pragma once
 
-#include "parse_scene.h"
+#include "parse/parse_scene.h"
 #include <iostream>
 
 std::ostream& operator<<(std::ostream &os, const ParsedColor &color);

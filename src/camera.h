@@ -1,6 +1,6 @@
 #pragma once
 #include "vector.h"
-#include "parse_scene.h"
+#include "parse/parse_scene.h"
 
 struct Camera {
     Vector3 lookfrom;
