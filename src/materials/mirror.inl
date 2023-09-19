@@ -10,8 +10,6 @@ std::optional<SampleRecord> sample_bsdf_op::operator()(const Mirror &m) const {
 }
 
 Real sample_bsdf_pdf_op::operator()(const Mirror &m) const {
-    if(length(normalize(dir_in + dir_out) - v.shading_normal) < c_EPSILON)
-        return Real(1);
     return Real(0);
 }
 

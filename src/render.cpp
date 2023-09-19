@@ -75,7 +75,7 @@ Image3 render(const std::vector<std::string> &params) {
                             w),
                             c_EPSILON,
                             infinity<Real>() };
-                    color += path_tracing_one_sample_MIS(scene, r, rng);
+                    color += path_tracing(scene, r, rng);
                 }
                 img(x, img.height - y - 1) = color / Real(scene.options.spp);
             }

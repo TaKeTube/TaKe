@@ -16,10 +16,11 @@ std::optional<SampleRecord> sample_bsdf_op::operator()(const Plastic &m) const {
         record.pdf = Real(1);
     }else{
         record.dir_out = to_world(n, sample_hemisphere_cos(rng));
-        if (dot(v.geo_normal, record.dir_out) < 0) 
+        if (dot(v.geo_normal, record.dir_out) < 0) {
             record.pdf = Real(0);
-        else
+        }else{
             record.pdf = fmax(dot(n, record.dir_out), Real(0)) / c_PI;
+        }
     }
     return record;
 }
@@ -32,7 +33,7 @@ Real sample_bsdf_pdf_op::operator()(const Plastic &m) const {
     Real eta = m.eta;
     Real F0 = pow((eta - 1)/(eta + 1), Real(2));
     Real F = F0 + (1 - F0) * pow(1 - dot(n, dir_out), Real(5));
-    return length(normalize(dir_in + dir_out) - n) < c_EPSILON ? Real(F) : (1 - F) * fmax(dot(n, dir_out), Real(0)) / c_PI;
+    return (1 - F) * fmax(dot(n, dir_out), Real(0)) / c_PI;
 }
 
 Vector3 eval_material_op::operator()(const Plastic &m) const {
