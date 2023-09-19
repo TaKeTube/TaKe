@@ -15,7 +15,6 @@ Vector3 path_tracing(const Scene& scene, const Ray& ray, std::mt19937& rng){
         const Light& light = scene.lights.at(v.area_light_id);
         if (auto* l = std::get_if<DiffuseAreaLight>(&light))
             radiance += throughput * l->intensity;
-        return radiance;
     }
 
     for(int i = 0; i <= scene.options.max_depth; ++i){
@@ -43,8 +42,8 @@ Vector3 path_tracing(const Scene& scene, const Ray& ray, std::mt19937& rng){
                     break;
                 }
                 Real bsdf_pdf = get_bsdf_pdf(m, dir_in, light_dir, v, scene.textures);
-                // Cannot break here because it is possible that light is behind hit point
-                if(bsdf_pdf > 0){
+                // Cannot break here because it is possible that the light is behind the current point
+                if(bsdf_pdf > 0 && !std::isinf(light_pdf)){
                     SampleRecord record = {};
                     record.dir_out = light_dir;
                     Vector3 FG = eval(m, dir_in, record, v, scene.textures);
@@ -52,7 +51,7 @@ Vector3 path_tracing(const Scene& scene, const Ray& ray, std::mt19937& rng){
                     // TODO Multi light may cause different behavior here, needs to be check
                     Ray shadow_r = Ray{v.pos, light_dir, c_EPSILON, (1 - c_EPSILON) * d};
                     if(!scene_occluded(scene, shadow_r)){
-                        C1 = FG * l->intensity / (light_pdf + bsdf_pdf);
+                        C1 = FG * l->intensity * light_pdf / (light_pdf * light_pdf + bsdf_pdf * bsdf_pdf);
                     }
                 }
             }
@@ -95,16 +94,15 @@ Vector3 path_tracing(const Scene& scene, const Ray& ray, std::mt19937& rng){
                 break;
             }
             auto light = scene.lights[new_v_->area_light_id];
-            if (auto* l = std::get_if<DiffuseAreaLight>(&light))
-                C2 = FG * l->intensity / (is_specular ? bsdf_pdf : (light_pdf + bsdf_pdf));
+            if (auto* l = std::get_if<DiffuseAreaLight>(&light)){
+                C2 = FG * l->intensity * (is_specular ? (1 / bsdf_pdf): (bsdf_pdf / (light_pdf * light_pdf + bsdf_pdf * bsdf_pdf)));
+            }
         }
         radiance += throughput * C2;
-        if(new_v_->area_light_id != -1){
-            break;
-        }
         
-        throughput *= FG / (is_specular ? bsdf_pdf : (light_pdf + bsdf_pdf));
-        // throughput *= FG / bsdf_pdf;
+        // throughput *= FG / (is_specular ? bsdf_pdf : (light_pdf + bsdf_pdf));
+        // A complicated proof shows this line combined with terminated NEE leads to the unbiased result
+        throughput *= FG / bsdf_pdf;
         v = *new_v_;
     }
     return radiance;
