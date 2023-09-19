@@ -43,6 +43,7 @@ Vector3 path_tracing(const Scene& scene, const Ray& ray, std::mt19937& rng){
                 }
                 Real bsdf_pdf = get_bsdf_pdf(m, dir_in, light_dir, v, scene.textures);
                 // Cannot break here because it is possible that the light is behind the current point
+                // Also, seems the truncation above leads to infinity light pdf, inf/inf leads to NaN so exclude this case
                 if(bsdf_pdf > 0 && !std::isinf(light_pdf)){
                     SampleRecord record = {};
                     record.dir_out = light_dir;
@@ -100,6 +101,7 @@ Vector3 path_tracing(const Scene& scene, const Ray& ray, std::mt19937& rng){
         }
         radiance += throughput * C2;
         
+        // This line would lead to a biased result
         // throughput *= FG / (is_specular ? bsdf_pdf : (light_pdf + bsdf_pdf));
         // A complicated proof shows this line combined with terminated NEE leads to the unbiased result
         throughput *= FG / bsdf_pdf;
