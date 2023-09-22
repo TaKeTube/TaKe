@@ -4,7 +4,6 @@
 #include "light.h"
 #include "bvh.h"
 #include "camera.h"
-#include "parse/parse_scene.h"
 
 struct RenderOptions {
     int spp = 4;

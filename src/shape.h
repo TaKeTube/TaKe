@@ -22,10 +22,9 @@ struct Sphere : public ShapeBase {
     Real radius;
 };
 
-struct Triangle {
+struct Triangle : public ShapeBase {
     int face_index;
     const TriangleMesh *mesh;
-    int area_light_id = -1;
 };
 
 Vector2 get_sphere_uv(const Vector3& p);

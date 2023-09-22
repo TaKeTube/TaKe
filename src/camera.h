@@ -8,5 +8,3 @@ struct Camera {
     Vector3 up;
     Real vfov;
 };
-
-Camera from_parsed_camera(const ParsedCamera &pc);

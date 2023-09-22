@@ -1,4 +1,5 @@
 #include "scene.h"
+#include "parse/parse_scene.h"
 
 Scene::Scene(){}
 
