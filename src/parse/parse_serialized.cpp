@@ -171,7 +171,7 @@ std::vector<Vector3> load_color(ZStream &zs, int num_vertices) {
     return colors;
 }
 
-ParsedTriangleMesh parse_serialized(const fs::path &filename,
+TriangleMesh parse_serialized(const fs::path &filename,
                                     int shape_index,
                                     const Matrix4x4 &to_world) {
     std::fstream fs(filename.c_str(), std::fstream::in | std::fstream::binary);
@@ -205,7 +205,7 @@ ParsedTriangleMesh parse_serialized(const fs::path &filename,
     bool file_double_precision = flags & EDoublePrecision;
     // bool face_normals = flags & EFaceNormals;
 
-    ParsedTriangleMesh mesh;
+    TriangleMesh mesh;
     if (file_double_precision) {
         mesh.positions = load_position<double>(zs, vertex_count);
     } else {

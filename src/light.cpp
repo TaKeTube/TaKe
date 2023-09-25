@@ -24,7 +24,7 @@ Real get_light_pmf(const Scene &scene, int id) {
 
 Real light_power(const Scene &scene, const Light &light) {
     if(auto* l = std::get_if<DiffuseAreaLight>(&light)){
-        return luminance(l->intensity) * get_area(scene.shapes[l->shape_id]) * c_PI;
+        return luminance(l->intensity) * get_area(scene.shapes[l->shape_id], scene.meshes) * c_PI;
     }
     return 0;
 }
@@ -35,7 +35,7 @@ Real get_light_pdf(const Scene &scene, int light_id,
     if(auto* l = std::get_if<DiffuseAreaLight>(&scene.lights[light_id])){
         auto shape = scene.shapes[l->shape_id];
         if(auto* s = std::get_if<Triangle>(&shape)){
-            return 1/get_area(*s);
+            return 1/get_area(*s, scene.meshes);
         }else if(auto* s = std::get_if<Sphere>(&shape)){
             // return 1/get_area(*s);
             Real r = s->radius;
@@ -52,5 +52,5 @@ PointAndNormal sample_on_light_op::operator()(const PointLight &l) const {
 }
 
 PointAndNormal sample_on_light_op::operator()(const DiffuseAreaLight &l) const {
-    return std::visit(sample_on_shape_op{ref_pos, rng}, scene.shapes.at(l.shape_id));
+    return std::visit(sample_on_shape_op{scene.meshes, ref_pos, rng}, scene.shapes.at(l.shape_id));
 }

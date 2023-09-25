@@ -22,7 +22,7 @@ enum class FovAxis {
     LARGER
 };
 
-struct ParsedLookAtXform {
+struct LookAtXform {
     Vector3 lookfrom = Vector3{0, 0, 0};
     Vector3 lookat = Vector3{0, 0, -1};
     Vector3 up = Vector3{0, 1, 0};
@@ -285,9 +285,9 @@ std::tuple<int /* width */, int /* height */, std::string /* filename */>
     return std::make_tuple(width, height, filename);
 }
 
-ParsedLookAtXform parse_lookat(pugi::xml_node node,
+LookAtXform parse_lookat(pugi::xml_node node,
                                const std::map<std::string, std::string> &default_map) {
-    ParsedLookAtXform lookat_xform;
+    LookAtXform lookat_xform;
     for (auto child : node.children()) {
         std::string name = to_lowercase(child.name());
         if (name == "lookat") {
@@ -304,10 +304,10 @@ ParsedLookAtXform parse_lookat(pugi::xml_node node,
     return lookat_xform;
 }
 
-std::tuple<ParsedCamera, std::string /* output filename */, int /* sample_count */>
+std::tuple<Camera, std::string /* output filename */, int /* sample_count */>
         parse_sensor(pugi::xml_node node,
                      const std::map<std::string, std::string> &default_map) {
-    ParsedLookAtXform lookat_xform; 
+    LookAtXform lookat_xform; 
     Real fov = c_default_fov;
 
     int width = c_default_res, height = c_default_res;
@@ -376,17 +376,18 @@ std::tuple<ParsedCamera, std::string /* output filename */, int /* sample_count 
         fov = degrees(2 * atan(height / 2));
     }
 
-    return std::make_tuple(ParsedCamera{lookat_xform.lookfrom,
-                                        lookat_xform.lookat,
-                                        lookat_xform.up,
-                                        fov,
-                                        width, height},
+    return std::make_tuple(Camera{width, height,
+                                  lookat_xform.lookfrom,
+                                  lookat_xform.lookat,
+                                  lookat_xform.up,
+                                  fov},
                            filename,
                            sample_count);
 }
 
-ParsedColor parse_texture(pugi::xml_node node,
-                          const std::map<std::string, std::string> &default_map) {
+Texture parse_texture(pugi::xml_node node,
+                          const std::map<std::string, std::string> &default_map,
+                          TexturePool &texture_pool) {
     std::string type = node.attribute("type").value();
     if (type == "bitmap") {
         std::string filename = "";
@@ -420,23 +421,24 @@ ParsedColor parse_texture(pugi::xml_node node,
         if (path.is_relative()) {
             path = fs::current_path() / path;
         }
-        return ParsedImageTexture{path,
+        return ImageTexture{insert_image3(texture_pool, path.string(), path),
             uscale, vscale, uoffset, voffset};
     }
     Error(std::string("Unknown texture type: ") + type);
-    return ParsedColor{};
+    return Texture{};
 }
 
-ParsedColor parse_color(
+Texture parse_color(
         pugi::xml_node node,
-        std::map<std::string /* name id */, ParsedColor> &texture_map,
+        std::map<std::string /* name id */, Texture> &texture_map,
+        TexturePool &texture_pool,
         const std::map<std::string, std::string> &default_map) {
     std::string type = node.name();
     if (type == "rgb") {
-        return ParsedColor(parse_vector3(node.attribute("value").value(), default_map));
+        return ConstTexture{parse_vector3(node.attribute("value").value(), default_map)};
     } else if (type == "srgb") {
         Vector3 srgb = parse_srgb(node.attribute("value").value(), default_map);
-        return ParsedColor(sRGB_to_RGB(srgb));
+        return ConstTexture{sRGB_to_RGB(srgb)};
     } else if (type == "ref") {
         // referencing a texture
         std::string ref_id = node.attribute("id").value();
@@ -446,10 +448,10 @@ ParsedColor parse_color(
         }
         return t_it->second;
     } else if (type == "texture") {
-        return parse_texture(node, default_map);
+        return parse_texture(node, default_map, texture_pool);
     } else {
         Error(std::string("Unknown spectrum texture type:") + type);
-        return ParsedColor(Vector3{0, 0, 0});
+        return ConstTexture{Vector3{0, 0, 0}};
     }
 }
 
@@ -467,9 +469,10 @@ Vector3 parse_intensity(pugi::xml_node node,
     return Vector3{1, 1, 1};
 }
 
-std::tuple<std::string /* ID */, ParsedMaterial> parse_bsdf(
+std::tuple<std::string /* ID */, Material> parse_bsdf(
         pugi::xml_node node,
-        std::map<std::string /* name id */, ParsedColor> &texture_map,
+        std::map<std::string /* name id */, Texture> &texture_map,
+        TexturePool &texture_pool,
         const std::map<std::string, std::string> &default_map,
         const std::string &parent_id = "") {
     std::string type = node.attribute("type").value();
@@ -481,115 +484,115 @@ std::tuple<std::string /* ID */, ParsedMaterial> parse_bsdf(
         // In take, all BSDFs are twosided.
         for (auto child : node.children()) {
             if (std::string(child.name()) == "bsdf") {
-                return parse_bsdf(child, texture_map, default_map, id);
+                return parse_bsdf(child, texture_map, texture_pool, default_map, id);
             }
         }
     } else if (type == "diffuse") {
-        ParsedColor reflectance(Vector3{0.5, 0.5, 0.5});
+        Texture reflectance(ConstTexture{Vector3{0.5, 0.5, 0.5}});
         for (auto child : node.children()) {
             std::string name = child.attribute("name").value();
             if (name == "reflectance") {
                 reflectance = parse_color(
-                    child, texture_map, default_map);
+                    child, texture_map, texture_pool, default_map);
             }
         }
-        return std::make_tuple(id, ParsedDiffuse{reflectance});
+        return std::make_tuple(id, Diffuse{reflectance});
     } else if (type == "mirror") {
-        ParsedColor reflectance(Vector3{1, 1, 1});
+        Texture reflectance(ConstTexture{Vector3{1, 1, 1}});
         for (auto child : node.children()) {
             std::string name = child.attribute("name").value();
             if (name == "reflectance") {
                 reflectance = parse_color(
-                    child, texture_map, default_map);
+                    child, texture_map, texture_pool, default_map);
             }
         }
-        return std::make_tuple(id, ParsedMirror{reflectance});
+        return std::make_tuple(id, Mirror{reflectance});
     } else if (type == "plastic") {
-        ParsedColor reflectance(Vector3{0.5, 0.5, 0.5});
+        Texture reflectance(ConstTexture{Vector3{0.5, 0.5, 0.5}});
         Real eta = 1.5;
         for (auto child : node.children()) {
             std::string name = child.attribute("name").value();
             if (name == "reflectance") {
                 reflectance = parse_color(
-                    child, texture_map, default_map);
+                    child, texture_map, texture_pool, default_map);
             } else if (name == "ior" || name == "eta") {
                 eta = parse_float(child.attribute("value").value(), default_map);
             }
         }
-        return std::make_tuple(id, ParsedPlastic{eta, reflectance});
+        return std::make_tuple(id, Plastic{reflectance, eta});
     } else if (type == "phong") {
-        ParsedColor reflectance(Vector3{0.5, 0.5, 0.5});
+        Texture reflectance(ConstTexture{Vector3{0.5, 0.5, 0.5}});
         Real exponent = 5;
         for (auto child : node.children()) {
             std::string name = child.attribute("name").value();
             if (name == "reflectance") {
                 reflectance = parse_color(
-                    child, texture_map, default_map);
+                    child, texture_map, texture_pool, default_map);
             } else if (name == "exponent" || name == "alpha") {
                 exponent = parse_float(child.attribute("value").value(), default_map);
             }
         }
-        return std::make_tuple(id, ParsedPhong{reflectance, exponent});
+        return std::make_tuple(id, Phong{reflectance, exponent});
     } else if (type == "blinn" || type == "blinnphong") {
-        ParsedColor reflectance(Vector3{0.5, 0.5, 0.5});
+        Texture reflectance(ConstTexture{Vector3{0.5, 0.5, 0.5}});
         Real exponent = 5;
         for (auto child : node.children()) {
             std::string name = child.attribute("name").value();
             if (name == "reflectance") {
                 reflectance = parse_color(
-                    child, texture_map, default_map);
+                    child, texture_map, texture_pool, default_map);
             } else if (name == "exponent" || name == "alpha") {
                 exponent = parse_float(child.attribute("value").value(), default_map);
             }
         }
-        return std::make_tuple(id, ParsedBlinnPhong{reflectance, exponent});
+        return std::make_tuple(id, BlinnPhong{reflectance, exponent});
     } else if (type == "blinn_microfacet" || type == "blinnphong_microfacet") {
-        ParsedColor reflectance(Vector3{0.5, 0.5, 0.5});
+        Texture reflectance(ConstTexture{Vector3{0.5, 0.5, 0.5}});
         Real exponent = 5;
         for (auto child : node.children()) {
             std::string name = child.attribute("name").value();
             if (name == "reflectance") {
                 reflectance = parse_color(
-                    child, texture_map, default_map);
+                    child, texture_map, texture_pool, default_map);
             } else if (name == "exponent" || name == "alpha") {
                 exponent = parse_float(child.attribute("value").value(), default_map);
             }
         }
-        return std::make_tuple(id, ParsedBlinnPhongMicrofacet{reflectance, exponent});
+        return std::make_tuple(id, BlinnPhongMicrofacet{reflectance, exponent});
     } else if (type == "disneydiffuse") {
-        ParsedColor base_color(Vector3{0.5, 0.5, 0.5});
+        Texture base_color(ConstTexture{Vector3{0.5, 0.5, 0.5}});
         Real roughness = Real(0.5);
         Real subsurface = Real(0);
         for (auto child : node.children()) {
             std::string name = child.attribute("name").value();
             if (name == "baseColor" || name == "base_color") {
                 base_color = parse_color(
-                    child, texture_map, default_map);
+                    child, texture_map, texture_pool, default_map);
             } else if (name == "roughness") {
                 roughness = parse_float(child.attribute("value").value(), default_map);
             } else if (name == "subsurface") {
                 subsurface = parse_float(child.attribute("value").value(), default_map);
             }
         }
-        return std::make_tuple(id, ParsedDisneyDiffuse{base_color, roughness, subsurface});
+        return std::make_tuple(id, DisneyDiffuse{base_color, roughness, subsurface});
     } else if (type == "disneymetal") {
-        ParsedColor base_color = (Vector3{0.5, 0.5, 0.5});
+        Texture base_color = (ConstTexture{Vector3{0.5, 0.5, 0.5}});
         Real roughness = Real(0.5);
         Real anisotropic = Real(0.0);
         for (auto child : node.children()) {
             std::string name = child.attribute("name").value();
             if (name == "baseColor" || name == "base_color") {
                 base_color = parse_color(
-                    child, texture_map, default_map);
+                    child, texture_map, texture_pool, default_map);
             } else if (name == "roughness") {
                 roughness = parse_float(child.attribute("value").value(), default_map);
             } else if (name == "anisotropic") {
                 anisotropic = parse_float(child.attribute("value").value(), default_map);
             }
         }
-        return std::make_tuple(id, ParsedDisneyMetal{base_color, roughness, anisotropic});
+        return std::make_tuple(id, DisneyMetal{base_color, roughness, anisotropic});
     } else if (type == "disneyglass") {
-        ParsedColor base_color = (Vector3{0.5, 0.5, 0.5});
+        Texture base_color = (ConstTexture{Vector3{0.5, 0.5, 0.5}});
         Real roughness = Real(0.5);
         Real anisotropic = Real(0.0);
         Real eta = Real(1.5);
@@ -597,7 +600,7 @@ std::tuple<std::string /* ID */, ParsedMaterial> parse_bsdf(
             std::string name = child.attribute("name").value();
             if (name == "baseColor" || name == "base_color") {
                 base_color = parse_color(
-                    child, texture_map, default_map);
+                    child, texture_map, texture_pool, default_map);
             } else if (name == "roughness") {
                 roughness = parse_float(child.attribute("value").value(), default_map);
             } else if (name == "anisotropic") {
@@ -606,7 +609,7 @@ std::tuple<std::string /* ID */, ParsedMaterial> parse_bsdf(
                 eta = parse_float(child.attribute("value").value(), default_map);
             }
         }
-        return std::make_tuple(id, ParsedDisneyGlass{base_color, roughness, anisotropic, eta});
+        return std::make_tuple(id, DisneyGlass{base_color, roughness, anisotropic, eta});
     } else if (type == "disneyclearcoat") {
         Real clearcoat_gloss = Real(1.0);
         for (auto child : node.children()) {
@@ -615,22 +618,22 @@ std::tuple<std::string /* ID */, ParsedMaterial> parse_bsdf(
                 clearcoat_gloss = parse_float(child.attribute("value").value(), default_map);
             }
         }
-        return std::make_tuple(id, ParsedDisneyClearcoat{clearcoat_gloss});
+        return std::make_tuple(id, DisneyClearcoat{clearcoat_gloss});
     } else if (type == "disneysheen") {
-        ParsedColor base_color = (Vector3{0.5, 0.5, 0.5});
+        Texture base_color = ConstTexture{Vector3{0.5, 0.5, 0.5}};
         Real sheen_tint = Real(0.5);
         for (auto child : node.children()) {
             std::string name = child.attribute("name").value();
             if (name == "baseColor" || name == "base_color") {
                 base_color = parse_color(
-                    child, texture_map, default_map);
+                    child, texture_map, texture_pool, default_map);
             } else if (name == "sheenTint" || name == "sheen_tint") {
                 sheen_tint = parse_float(child.attribute("value").value(), default_map);
             }
         }
-        return std::make_tuple(id, ParsedDisneySheen{base_color, sheen_tint});
+        return std::make_tuple(id, DisneySheen{base_color, sheen_tint});
     } else if (type == "disneybsdf" || type == "principled") {
-        ParsedColor base_color = (Vector3{0.5, 0.5, 0.5});
+        Texture base_color = ConstTexture{Vector3{0.5, 0.5, 0.5}};
         Real specular_transmission = Real(0);
         Real metallic = Real(0);
         Real subsurface = Real(0);
@@ -647,7 +650,7 @@ std::tuple<std::string /* ID */, ParsedMaterial> parse_bsdf(
             std::string name = child.attribute("name").value();
             if (name == "baseColor" || name == "base_color") {
                 base_color = parse_color(
-                    child, texture_map, default_map);
+                    child, texture_map, texture_pool, default_map);
             } else if (name == "specularTransmission" || name == "specular_transmission" ||
                         name == "specTrans" || name == "spec_trans") {
                 specular_transmission = parse_float(child.attribute("value").value(), default_map);
@@ -676,7 +679,7 @@ std::tuple<std::string /* ID */, ParsedMaterial> parse_bsdf(
                 eta = parse_float(child.attribute("value").value(), default_map);
             }
         }
-        return std::make_tuple(id, ParsedDisneyBSDF{base_color,
+        return std::make_tuple(id, DisneyBSDF{base_color,
                                               specular_transmission,
                                               metallic,
                                               subsurface,
@@ -692,10 +695,10 @@ std::tuple<std::string /* ID */, ParsedMaterial> parse_bsdf(
     } else {
         Error(std::string("Unknown BSDF: ") + type);
     }
-    return std::make_tuple("", ParsedMaterial{});
+    return std::make_tuple("", Material{});
 }
 
-ParsedLight parse_emitter(pugi::xml_node node,
+Light parse_emitter(pugi::xml_node node,
                           const std::map<std::string, std::string> &default_map) {
     std::string type = node.attribute("type").value();
     if (type == "point") {
@@ -717,19 +720,21 @@ ParsedLight parse_emitter(pugi::xml_node node,
                 intensity = parse_intensity(child, default_map);
             }
         }
-        return ParsedPointLight{position, intensity};
+        return PointLight{position, intensity};
     } else {
         Error(std::string("Unknown emitter: ") + type);
     }
 }
 
-ParsedShape parse_shape(pugi::xml_node node,
-                        std::vector<ParsedMaterial> &materials,
-                        std::map<std::string /* name id */, int /* index id */> &material_map,
-                        std::map<std::string /* name id */, ParsedColor> &texture_map,
-                        std::vector<ParsedLight> &lights,
-                        const std::vector<ParsedShape> &shapes,
-                        const std::map<std::string, std::string> &default_map) {
+void parse_shape(pugi::xml_node node,
+                 std::vector<Material> &materials,
+                 std::map<std::string /* name id */, int /* index id */> &material_map,
+                 std::map<std::string /* name id */, Texture> &texture_map,
+                 TexturePool &texture_pool,
+                 std::vector<Light> &lights,
+                 std::vector<Shape> &shapes,
+                 std::vector<TriangleMesh> &meshes,
+                 const std::map<std::string, std::string> &default_map) {
     // First, parse the material inside the shape and get the material ID.
     int material_id = -1;
     for (auto child : node.children()) {
@@ -747,10 +752,10 @@ ParsedShape parse_shape(pugi::xml_node node,
             }
             material_id = it->second;
         } else if (name == "bsdf") {
-            ParsedMaterial m;
+            Material m;
             std::string material_name;
             std::tie(material_name, m) = parse_bsdf(
-                child, texture_map, default_map);
+                child, texture_map, texture_pool, default_map);
             if (!material_name.empty()) {
                 material_map[material_name] = materials.size();
             }
@@ -759,93 +764,25 @@ ParsedShape parse_shape(pugi::xml_node node,
         }
     }
 
-    ParsedShape shape;
+    // Parse area light emitter
+    bool is_emitter = false;
+    Vector3 radiance{1, 1, 1};
+    for (auto child : node.children()) {
+        std::string name = child.name();
+        if (name == "emitter") {
+            for (auto grand_child : child.children()) {
+                std::string name = grand_child.attribute("name").value();
+                if (name == "radiance") {
+                    radiance = parse_intensity(grand_child, default_map);
+                }
+            }
+            is_emitter = true;
+        }
+    }
     std::string type = node.attribute("type").value();
-    if (type == "obj") {
-        std::string filename;
-        Matrix4x4 to_world = Matrix4x4::identity();
-        bool face_normals = false;
-        for (auto child : node.children()) {
-            std::string name = child.attribute("name").value();
-            if (name == "filename") {
-                filename = parse_string(child.attribute("value").value(), default_map);
-            } else if (name == "toWorld" || name == "to_world") {
-                if (std::string(child.name()) == "transform") {
-                    to_world = parse_transform(child, default_map);
-                }
-            } else if (name == "faceNormals" || name == "face_normals") {
-                face_normals = parse_boolean(
-                    child.attribute("value").value(), default_map);
-            }
-        }
-        shape = parse_obj(filename, to_world);
-        ParsedTriangleMesh &mesh = std::get<ParsedTriangleMesh>(shape);
-        if (face_normals) {
-            mesh.normals = std::vector<Vector3>{};
-        } else {
-            if (mesh.normals.size() == 0) {
-                mesh.normals = compute_normals(mesh.positions, mesh.indices);
-            }
-        }
-    } else if (type == "ply") {
-        std::string filename;
-        int shape_index = 0;
-        Matrix4x4 to_world = Matrix4x4::identity();
-        bool face_normals = false;
-        for (auto child : node.children()) {
-            std::string name = child.attribute("name").value();
-            if (name == "filename") {
-                filename = parse_string(child.attribute("value").value(), default_map);
-            } else if (name == "toWorld" || name == "to_world") {
-                if (std::string(child.name()) == "transform") {
-                    to_world = parse_transform(child, default_map);
-                }
-            } else if (name == "shapeIndex" || name == "shape_index") {
-                shape_index = parse_integer(child.attribute("value").value(), default_map);
-            } else if (name == "faceNormals" || name == "face_normals") {
-                face_normals = parse_boolean(
-                    child.attribute("value").value(), default_map);
-            }
-        }
-        shape = parse_ply(filename, to_world);
-        ParsedTriangleMesh &mesh = std::get<ParsedTriangleMesh>(shape);
-        if (face_normals) {
-            mesh.normals = std::vector<Vector3>{};
-        } else {
-            if (mesh.normals.size() == 0) {
-                mesh.normals = compute_normals(mesh.positions, mesh.indices);
-            }
-        }
-    } else if (type == "serialized") {
-        std::string filename;
-        int shape_index = 0;
-        Matrix4x4 to_world = Matrix4x4::identity();
-        bool face_normals = false;
-        for (auto child : node.children()) {
-            std::string name = child.attribute("name").value();
-            if (name == "filename") {
-                filename = parse_string(child.attribute("value").value(), default_map);
-            } else if (name == "toWorld" || name == "to_world") {
-                if (std::string(child.name()) == "transform") {
-                    to_world = parse_transform(child, default_map);
-                }
-            } else if (name == "shapeIndex" || name == "shape_index") {
-                shape_index = parse_integer(child.attribute("value").value(), default_map);
-            } else if (name == "faceNormals" || name == "face_normals") {
-                face_normals = parse_boolean(
-                    child.attribute("value").value(), default_map);
-            }
-        }
-        shape = parse_serialized(filename, shape_index, to_world);
-        ParsedTriangleMesh &mesh = std::get<ParsedTriangleMesh>(shape);
-        if (face_normals) {
-            mesh.normals = std::vector<Vector3>{};
-        } else {
-            if (mesh.normals.size() == 0) {
-                mesh.normals = compute_normals(mesh.positions, mesh.indices);
-            }
-        }
-    } else if (type == "sphere") {
+
+    if (type == "sphere") {
+        Shape shape;
         Vector3 center{0, 0, 0};
         Real radius = 1;
         for (auto child : node.children()) {
@@ -859,87 +796,175 @@ ParsedShape parse_shape(pugi::xml_node node,
                 radius = parse_float(child.attribute("value").value(), default_map);
             }
         }
-        shape = ParsedSphere{{}, center, radius};
-    } else if (type == "rectangle") {
-        // Create a triangle mesh
-        Matrix4x4 to_world = Matrix4x4::identity();
-        bool flip_normals = false;
-        ParsedTriangleMesh mesh;
-        mesh.positions = {
-            Vector3{-1, -1, 0}, Vector3{ 1, -1, 0}, Vector3{ 1, 1, 0}, Vector3{-1, 1, 0}
-        };
-        mesh.indices = {
-            Vector3i{0, 1, 2}, Vector3i{0, 2, 3}
-        };
-        mesh.uvs = {
-            Vector2{0, 0}, Vector2{1, 0}, Vector2{1, 1}, Vector2{0, 1}
-        };
-        mesh.normals = {
-            Vector3{0, 0, 1}, Vector3{0, 0, 1}, Vector3{0, 0, 1}, Vector3{0, 0, 1}
-        };
-        for (auto child : node.children()) {
-            std::string name = child.attribute("name").value();
-            if (name == "toWorld" || name == "to_world") {
-                if (std::string(child.name()) == "transform") {
-                    to_world = parse_transform(child, default_map);
-                }
-            } else if (name == "flipNormals" || name == "flip_normals") {
-                flip_normals = parse_boolean(child.attribute("value").value(), default_map);
-            }
-        }
-        if (flip_normals) {
-            for (auto &n : mesh.normals) {
-                n = -n;
-            }
-        }
-        for (auto &p : mesh.positions) {
-            p = xform_point(to_world, p);
-        }
-        for (auto &n : mesh.normals) {
-            n = xform_normal(inverse(to_world), n);
-        }
-        shape = mesh;
-    } else {
-        Error(std::string("Unknown shape:") + type);
-    }
-    set_material_id(shape, material_id);
+        shape = Sphere{{}, center, radius};
+        set_material_id(shape, material_id);
 
-    // Parse area light emitter
-    for (auto child : node.children()) {
-        std::string name = child.name();
-        if (name == "emitter") {
-            Vector3 radiance{1, 1, 1};
-            for (auto grand_child : child.children()) {
-                std::string name = grand_child.attribute("name").value();
-                if (name == "radiance") {
-                    radiance = parse_intensity(grand_child, default_map);
-                }
-            }
+        if(is_emitter){
             set_area_light_id(shape, lights.size());
             lights.push_back(
-                ParsedDiffuseAreaLight{(int)shapes.size() /* shape ID */, radiance});
+                DiffuseAreaLight{(int)shapes.size() /* shape ID */, radiance});
+        }
+        shapes.push_back(shape);
+    }else{
+        TriangleMesh mesh;
+        if (type == "obj") {
+            std::string filename;
+            Matrix4x4 to_world = Matrix4x4::identity();
+            bool face_normals = false;
+            for (auto child : node.children()) {
+                std::string name = child.attribute("name").value();
+                if (name == "filename") {
+                    filename = parse_string(child.attribute("value").value(), default_map);
+                } else if (name == "toWorld" || name == "to_world") {
+                    if (std::string(child.name()) == "transform") {
+                        to_world = parse_transform(child, default_map);
+                    }
+                } else if (name == "faceNormals" || name == "face_normals") {
+                    face_normals = parse_boolean(
+                        child.attribute("value").value(), default_map);
+                }
+            }
+            mesh = parse_obj(filename, to_world);
+            if (face_normals) {
+                mesh.normals = std::vector<Vector3>{};
+            } else {
+                if (mesh.normals.size() == 0) {
+                    mesh.normals = compute_normals(mesh.positions, mesh.indices);
+                }
+            }
+        } else if (type == "ply") {
+            std::string filename;
+            int shape_index = 0;
+            Matrix4x4 to_world = Matrix4x4::identity();
+            bool face_normals = false;
+            for (auto child : node.children()) {
+                std::string name = child.attribute("name").value();
+                if (name == "filename") {
+                    filename = parse_string(child.attribute("value").value(), default_map);
+                } else if (name == "toWorld" || name == "to_world") {
+                    if (std::string(child.name()) == "transform") {
+                        to_world = parse_transform(child, default_map);
+                    }
+                } else if (name == "shapeIndex" || name == "shape_index") {
+                    shape_index = parse_integer(child.attribute("value").value(), default_map);
+                } else if (name == "faceNormals" || name == "face_normals") {
+                    face_normals = parse_boolean(
+                        child.attribute("value").value(), default_map);
+                }
+            }
+            mesh = parse_ply(filename, to_world);
+            if (face_normals) {
+                mesh.normals = std::vector<Vector3>{};
+            } else {
+                if (mesh.normals.size() == 0) {
+                    mesh.normals = compute_normals(mesh.positions, mesh.indices);
+                }
+            }
+        } else if (type == "serialized") {
+            std::string filename;
+            int shape_index = 0;
+            Matrix4x4 to_world = Matrix4x4::identity();
+            bool face_normals = false;
+            for (auto child : node.children()) {
+                std::string name = child.attribute("name").value();
+                if (name == "filename") {
+                    filename = parse_string(child.attribute("value").value(), default_map);
+                } else if (name == "toWorld" || name == "to_world") {
+                    if (std::string(child.name()) == "transform") {
+                        to_world = parse_transform(child, default_map);
+                    }
+                } else if (name == "shapeIndex" || name == "shape_index") {
+                    shape_index = parse_integer(child.attribute("value").value(), default_map);
+                } else if (name == "faceNormals" || name == "face_normals") {
+                    face_normals = parse_boolean(
+                        child.attribute("value").value(), default_map);
+                }
+            }
+            mesh = parse_serialized(filename, shape_index, to_world);
+            if (face_normals) {
+                mesh.normals = std::vector<Vector3>{};
+            } else {
+                if (mesh.normals.size() == 0) {
+                    mesh.normals = compute_normals(mesh.positions, mesh.indices);
+                }
+            }
+        } else if (type == "rectangle") {
+            // Create a triangle mesh
+            Matrix4x4 to_world = Matrix4x4::identity();
+            bool flip_normals = false;
+            mesh.positions = {
+                Vector3{-1, -1, 0}, Vector3{ 1, -1, 0}, Vector3{ 1, 1, 0}, Vector3{-1, 1, 0}
+            };
+            mesh.indices = {
+                Vector3i{0, 1, 2}, Vector3i{0, 2, 3}
+            };
+            mesh.uvs = {
+                Vector2{0, 0}, Vector2{1, 0}, Vector2{1, 1}, Vector2{0, 1}
+            };
+            mesh.normals = {
+                Vector3{0, 0, 1}, Vector3{0, 0, 1}, Vector3{0, 0, 1}, Vector3{0, 0, 1}
+            };
+            for (auto child : node.children()) {
+                std::string name = child.attribute("name").value();
+                if (name == "toWorld" || name == "to_world") {
+                    if (std::string(child.name()) == "transform") {
+                        to_world = parse_transform(child, default_map);
+                    }
+                } else if (name == "flipNormals" || name == "flip_normals") {
+                    flip_normals = parse_boolean(child.attribute("value").value(), default_map);
+                }
+            }
+            if (flip_normals) {
+                for (auto &n : mesh.normals) {
+                    n = -n;
+                }
+            }
+            for (auto &p : mesh.positions) {
+                p = xform_point(to_world, p);
+            }
+            for (auto &n : mesh.normals) {
+                n = xform_normal(inverse(to_world), n);
+            }
+        } else {
+            Error(std::string("Unknown shape:") + type);
+        }
+        set_material_id(mesh, material_id);
+
+        meshes.push_back(std::move(mesh));
+        {
+            TriangleMesh& mesh = meshes[meshes.size() - 1];
+
+            for (int face_index = 0; face_index < static_cast<int>(mesh.indices.size()); face_index++)
+            {
+                Triangle tri = { material_id, -1, face_index, static_cast<int>(meshes.size() - 1) };
+                if (is_emitter) {
+                    tri.area_light_id = static_cast<int>(lights.size());
+                    lights.push_back(DiffuseAreaLight{ static_cast<int>(shapes.size()) /* shape ID */, radiance });
+                }
+                shapes.push_back(tri);
+            }
         }
     }
-
-    return shape;
 }
 
-ParsedScene parse_scene(pugi::xml_node node) {
-    ParsedCamera camera{
+Scene parse_scene(pugi::xml_node node) {
+    Camera camera{
+        c_default_res, c_default_res,
         Vector3{0, 0,  0},
         Vector3{0, 0, -1},
         Vector3{0, 1,  0},
         c_default_fov, // FOV
-        c_default_res, c_default_res // width/height
     };
-    std::vector<ParsedMaterial> materials;
-    std::vector<ParsedLight> lights;
-    std::vector<ParsedShape> shapes;
+    std::vector<Material> materials;
+    std::vector<Light> lights;
+    std::vector<Shape> shapes;
+    std::vector<TriangleMesh> meshes;
     std::string filename = "image.exr";
     // For <default> tags
     // e.g., <default name="spp" value="4096"/> will map "spp" to "4096"
     std::map<std::string, std::string> default_map;
-    std::map<std::string /* name id */, ParsedColor> texture_map;
+    std::map<std::string /* name id */, Texture> texture_map;
+    TexturePool texture_pool;
     std::map<std::string /* name id */, int /* index id */> material_map;
     Vector3 background_color = Vector3{0.5, 0.5, 0.5};
     int sample_count = 16;
@@ -953,9 +978,9 @@ ParsedScene parse_scene(pugi::xml_node node) {
                 parse_sensor(child, default_map);
         } else if (name == "bsdf") {
             std::string material_name;
-            ParsedMaterial m;
+            Material m;
             std::tie(material_name, m) = parse_bsdf(
-                child, texture_map, default_map);
+                child, texture_map, texture_pool, default_map);
             if (!material_name.empty()) {
                 material_map[material_name] = materials.size();
                 materials.push_back(m);
@@ -963,20 +988,21 @@ ParsedScene parse_scene(pugi::xml_node node) {
         } else if (name == "emitter") {
             lights.push_back(parse_emitter(child, default_map));
         } else if (name == "shape") {
-            shapes.push_back(
-                parse_shape(child,
-                            materials,
-                            material_map,
-                            texture_map,
-                            lights,
-                            shapes,
-                            default_map));
+            parse_shape(child,
+                        materials,
+                        material_map,
+                        texture_map,
+                        texture_pool,
+                        lights,
+                        shapes,
+                        meshes,
+                        default_map);
         } else if (name == "texture") {
             std::string id = child.attribute("id").value();
             if (texture_map.find(id) != texture_map.end()) {
                 Error(std::string("Duplicated texture ID:") + id);
             }
-            texture_map[id] = parse_texture(child, default_map);
+            texture_map[id] = parse_texture(child, default_map, texture_pool);
         } else if (name == "background") {
             for (auto grandchild : child.children()) {
                 std::string name = grandchild.attribute("name").value();
@@ -986,15 +1012,19 @@ ParsedScene parse_scene(pugi::xml_node node) {
             }
         }
     }
-    return ParsedScene{camera,
-                       materials,
-                       lights,
-                       shapes,
-                       background_color,
-                       sample_count};
+    return Scene{camera,
+                 std::move(shapes),
+                 std::move(meshes),
+                 std::move(lights),
+                 std::move(materials),
+                 std::move(texture_pool),
+                 background_color,
+                 {sample_count, -1},
+                 filename,
+                 };
 }
 
-ParsedScene parse_scene(const fs::path &filename) {
+Scene parse_scene(const fs::path &filename) {
     pugi::xml_document doc;
     pugi::xml_parse_result result = doc.load_file(filename.c_str());
     if (!result) {
@@ -1005,8 +1035,8 @@ ParsedScene parse_scene(const fs::path &filename) {
     // back up the current working directory and switch to the parent folder of the file
     fs::path old_path = fs::current_path();
     fs::current_path(filename.parent_path());
-    ParsedScene scene = parse_scene(doc.child("scene"));
+    Scene scene = parse_scene(doc.child("scene"));
     // switch back to the old current working directory
     fs::current_path(old_path);
-    return scene;
+    return std::move(scene);
 }

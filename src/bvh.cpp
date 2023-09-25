@@ -46,7 +46,7 @@ int construct_bvh(const std::vector<BBoxWithID> &boxes,
 
 // Tested on party_bgonly.xml, traverse version is faster than recursive version by around 2-3 s
 // Traverse version
-// std::optional<Intersection> bvh_intersect(const int bvh_root_id, const std::vector<BVHNode> &bvh_nodes, const std::vector<Shape> &shapes, Ray ray) {
+// std::optional<Intersection> bvh_intersect(const int bvh_root_id, const std::vector<BVHNode> &bvh_nodes, const std::vector<Shape> &shapes, const std::vector<TriangleMesh>& meshes, Ray ray) {
 //     int node_ptr = 0;
 //     bool is_left = true;
 //     std::optional<Intersection> intersection;
@@ -63,7 +63,7 @@ int construct_bvh(const std::vector<BBoxWithID> &boxes,
         
 //         if(curr_node.primitive_id != -1)
 //         {
-//             std::optional<Intersection> temp_intersection = std::visit(intersect_op{ray}, shapes[curr_node.primitive_id]);
+//             std::optional<Intersection> temp_intersection = intersect_shape(shapes[curr_node.primitive_id], meshes, ray); 
 //             if(temp_intersection && temp_intersection->t < intersection->t){
 //                 intersection = std::move(temp_intersection);
 //                 if(is_left && intersection->t < ray.tmax) ray.tmax = intersection->t;
@@ -83,16 +83,16 @@ int construct_bvh(const std::vector<BBoxWithID> &boxes,
 
 // Recursive version
 // std::optional<Intersection> bvh_intersect(const std::vector<BVHNode> &bvh_nodes, const std::vector<Shape> &shapes, const BVHNode &node, Ray ray) {
-std::optional<Intersection> bvh_intersect(const int bvh_root_id, const std::vector<BVHNode> &bvh_nodes, const std::vector<Shape> &shapes, Ray ray) {
+std::optional<Intersection> bvh_intersect(const int bvh_root_id, const std::vector<BVHNode> &bvh_nodes, const std::vector<Shape> &shapes, const std::vector<TriangleMesh>& meshes, Ray ray) {
     const BVHNode& node = bvh_nodes[bvh_root_id];
     if (node.primitive_id != -1) {
-        return std::visit(intersect_op{ray}, shapes[node.primitive_id]);
+        return intersect_shape(shapes[node.primitive_id], meshes, ray); 
     }
     const BVHNode &left = bvh_nodes[node.left_node_id];
     const BVHNode &right = bvh_nodes[node.right_node_id];
     std::optional<Intersection> isect_left;
     if (intersect(left.box, ray)) {
-        isect_left = bvh_intersect(node.left_node_id, bvh_nodes, shapes, ray);
+        isect_left = bvh_intersect(node.left_node_id, bvh_nodes, shapes, meshes, ray);
         if (isect_left) {
             ray.tmax = isect_left->t;
         }
@@ -101,7 +101,7 @@ std::optional<Intersection> bvh_intersect(const int bvh_root_id, const std::vect
         // Since we've already set ray.tfar to the left node
         // if we still hit something on the right, it's closer
         // and we should return that.
-        if (auto isect_right = bvh_intersect(node.right_node_id, bvh_nodes, shapes, ray)) {
+        if (auto isect_right = bvh_intersect(node.right_node_id, bvh_nodes, shapes, meshes, ray)) {
             return isect_right;
         }
     }

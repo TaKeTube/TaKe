@@ -25,16 +25,14 @@ Image3 render(const std::vector<std::string> &params) {
     Timer timer;
     std::cout << "Parsing and constructing scene " << params[0] << "." << std::endl;
     tick(timer);
-    ParsedScene pscene = parse_scene(params[0]);
+    Scene scene = parse_scene(params[0]);
     std::cout << "Scene parsing done. Took " << tick(timer) << " seconds." << std::endl;
-    UNUSED(pscene);
+    UNUSED(scene);
 
-    Scene scene(pscene);
     scene.options.max_depth = max_depth;
-
-    Image3 img(scene.width, scene.height);
-
     Camera& cam = scene.camera;
+
+    Image3 img(cam.width, cam.height);
 
     Real theta = cam.vfov / 180 * c_PI;
     Real h = tan(theta / 2);

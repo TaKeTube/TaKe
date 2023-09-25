@@ -4,7 +4,6 @@
 #include "light.h"
 #include "bvh.h"
 #include "camera.h"
-#include "parse/parse_scene.h"
 
 struct RenderOptions {
     int spp = 4;
@@ -12,20 +11,22 @@ struct RenderOptions {
 };
 
 struct Scene {
-    Scene();
-    Scene(const ParsedScene &scene);
+    // Scene();
+    // Scene(const Scene& scene);
 
     Camera camera;
-    int width, height;
     std::vector<Shape> shapes;
     std::vector<TriangleMesh> meshes;
     std::vector<Light> lights;
-    std::vector<Real> lights_power_pmf;
-    std::vector<Real> lights_power_cdf;
     std::vector<Material> materials;
     TexturePool textures;
     Vector3 background_color;
+
     RenderOptions options;
+    std::string output_filename;
+
+    std::vector<Real> lights_power_pmf;
+    std::vector<Real> lights_power_cdf;
 
     std::vector<BVHNode> bvh_nodes;
     int bvh_root_id;
@@ -69,7 +70,7 @@ inline void debug_log(Scene& scene) {
     if(auto *ss = std::get_if<Sphere>(&s))
         printf("shape[0] sphere->center.x: %f\n", ss->center.x);
     else if(auto *ss = std::get_if<Triangle>(&s))
-        printf("shape[0] tri->face_index: %d\n", ss->face_index);
+        printf("shape[0] tri->face_index: %d\n", ss->face_id);
     else
         printf("unknown shape\n");
 
@@ -77,6 +78,6 @@ inline void debug_log(Scene& scene) {
 
     printf("scene_info.background_color.x: %f\n", scene.background_color.x);
     printf("scene_info.camera.lookat.x: %f\n", scene.camera.lookat.x);
-    printf("scene_info.height: %d\n", scene.height);
+    printf("scene_info.height: %d\n", scene.camera.height);
     printf("spp: %d\n", scene.options.spp);
 }
