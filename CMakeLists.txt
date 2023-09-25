@@ -62,7 +62,6 @@ set(SRCS src/3rdparty/miniz.h
          src/bvh.h         
          src/bvh.cpp
          src/camera.h
-         src/camera.cpp
          src/intersection.h
          src/light.h
          src/light.cpp

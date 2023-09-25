@@ -23,8 +23,8 @@ struct Sphere : public ShapeBase {
 };
 
 struct Triangle : public ShapeBase {
-    int face_index;
-    const TriangleMesh *mesh;
+    int face_id;
+    int mesh_id;
 };
 
 Vector2 get_sphere_uv(const Vector3& p);
@@ -35,26 +35,34 @@ struct intersect_op {
     std::optional<Intersection> operator()(const Sphere &s) const;
     std::optional<Intersection> operator()(const Triangle &s) const;
 
+    const std::vector<TriangleMesh>& meshes;
     const Ray& r;
 };
+
+inline std::optional<Intersection> intersect_shape(const Shape& shape, const std::vector<TriangleMesh>& meshes, const Ray& r){
+    return std::visit(intersect_op{meshes, r}, shape);
+}
 
 struct sample_on_shape_op {
     PointAndNormal operator()(const Sphere &s) const;
     PointAndNormal operator()(const Triangle &s) const;
 
+    const std::vector<TriangleMesh>& meshes;
     const Vector3 &ref_pos;
     std::mt19937& rng;
 };
 
-inline PointAndNormal sample_on_shape(const Shape& shape, const Vector3 &ref_pos, std::mt19937& rng) {
-    return std::visit(sample_on_shape_op{ref_pos, rng}, shape);
+inline PointAndNormal sample_on_shape(const Shape& shape, const std::vector<TriangleMesh>& meshes, const Vector3 &ref_pos, std::mt19937& rng) {
+    return std::visit(sample_on_shape_op{meshes, ref_pos, rng}, shape);
 }
 
 struct get_area_op {
     Real operator()(const Sphere &s) const;
     Real operator()(const Triangle &s) const;
+
+    const std::vector<TriangleMesh>& meshes;
 };
 
-inline Real get_area(const Shape& shape) {
-    return std::visit(get_area_op{}, shape);
+inline Real get_area(const Shape& shape, const std::vector<TriangleMesh>& meshes) {
+    return std::visit(get_area_op{meshes}, shape);
 }

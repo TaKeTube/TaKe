@@ -30,10 +30,9 @@ Image3 render(const std::vector<std::string> &params) {
     UNUSED(scene);
 
     scene.options.max_depth = max_depth;
-
-    Image3 img(scene.width, scene.height);
-
     Camera& cam = scene.camera;
+
+    Image3 img(cam.width, cam.height);
 
     Real theta = cam.vfov / 180 * c_PI;
     Real h = tan(theta / 2);

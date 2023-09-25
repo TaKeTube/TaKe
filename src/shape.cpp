@@ -42,8 +42,8 @@ std::optional<Intersection> intersect_op::operator()(const Sphere& s) const {
 }
 
 std::optional<Intersection> intersect_op::operator()(const Triangle& tri) const {
-    const TriangleMesh &mesh = *tri.mesh;
-    const Vector3i &indices = mesh.indices.at(tri.face_index);
+    const TriangleMesh &mesh = meshes[tri.mesh_id];
+    const Vector3i &indices = mesh.indices.at(tri.face_id);
 
     Vector3 v0 = mesh.positions.at(indices.x);
     Vector3 v1 = mesh.positions.at(indices.y);
@@ -144,8 +144,8 @@ PointAndNormal sample_on_shape_op::operator()(const Sphere &s) const {
 }
 
 PointAndNormal sample_on_shape_op::operator()(const Triangle &t) const {
-    const TriangleMesh &mesh = *t.mesh;
-    const Vector3i &indices = mesh.indices.at(t.face_index);
+    const TriangleMesh &mesh = meshes[t.mesh_id];
+    const Vector3i &indices = mesh.indices.at(t.face_id);
 
     Vector3 v0 = mesh.positions.at(indices.x);
     Vector3 v1 = mesh.positions.at(indices.y);
@@ -173,8 +173,8 @@ Real get_area_op::operator()(const Sphere &s) const {
 }
 
 Real get_area_op::operator()(const Triangle &t) const {
-    const TriangleMesh &mesh = *t.mesh;
-    const Vector3i &indices = mesh.indices.at(t.face_index);
+    const TriangleMesh &mesh = meshes[t.mesh_id];
+    const Vector3i &indices = mesh.indices.at(t.face_id);
 
     Vector3 v0 = mesh.positions.at(indices.x);
     Vector3 v1 = mesh.positions.at(indices.y);

@@ -1,11 +1,11 @@
 #include "print_scene.h"
 
-std::ostream& operator<<(std::ostream &os, const ParsedColor &color) {
+std::ostream& operator<<(std::ostream &os, const Texture &color) {
     os << "Color[type=";
-    if (auto *rgb = std::get_if<Vector3>(&color)) {
-        os << "RGB, value=" << (*rgb) << "]";
-    } else if (auto *texture = std::get_if<ParsedImageTexture>(&color)) {
-        os << "ImageTexture, filename=" << texture->filename << ", " <<
+    if (auto *rgb = std::get_if<ConstTexture>(&color)) {
+        os << "RGB, value=" << rgb->value << "]";
+    } else if (auto *texture = std::get_if<ImageTexture>(&color)) {
+        os << "ImageTexture, texture id=" << texture->texture_id << ", " <<
                             "uscale=" << texture->uscale << ", " <<
                             "vscale=" << texture->vscale << ", " <<
                             "uoffset=" << texture->uscale << ", " <<
@@ -17,7 +17,7 @@ std::ostream& operator<<(std::ostream &os, const ParsedColor &color) {
     return os;
 }
 
-std::ostream& operator<<(std::ostream &os, const ParsedCamera &camera) {
+std::ostream& operator<<(std::ostream &os, const Camera &camera) {
     os << "Camera[lookfrom=" << camera.lookfrom << 
                ", lookat=" << camera.lookat << 
                ", up=" << camera.up <<
@@ -27,11 +27,11 @@ std::ostream& operator<<(std::ostream &os, const ParsedCamera &camera) {
     return os;
 }
 
-std::ostream& operator<<(std::ostream &os, const ParsedMaterial &material) {
+std::ostream& operator<<(std::ostream &os, const Material &material) {
     os << "Material[type=";
-    if (auto *diffuse = std::get_if<ParsedDiffuse>(&material)) {
+    if (auto *diffuse = std::get_if<Diffuse>(&material)) {
         os << "Diffuse, reflectance=" << diffuse->reflectance << "]";
-    } else if (auto *mirror = std::get_if<ParsedMirror>(&material)) {
+    } else if (auto *mirror = std::get_if<Mirror>(&material)) {
         os << "Mirror, reflectance=" << mirror->reflectance << "]";
     } else {
         // Likely an unhandled case.
@@ -40,14 +40,14 @@ std::ostream& operator<<(std::ostream &os, const ParsedMaterial &material) {
     return os;
 }
 
-std::ostream& operator<<(std::ostream &os, const ParsedLight &light) {
+std::ostream& operator<<(std::ostream &os, const Light &light) {
     os << "Light[type=";
-    if (auto *point = std::get_if<ParsedPointLight>(&light)) {
+    if (auto *point = std::get_if<PointLight>(&light)) {
         os << "Point, position=" << point->position << ", intensity=" << point->intensity << "]";
-    } else if (auto *diffuse_area_light = std::get_if<ParsedDiffuseAreaLight>(&light)) {
+    } else if (auto *diffuse_area_light = std::get_if<DiffuseAreaLight>(&light)) {
         os << "DiffuseAreaLight, shape_id=" << 
             diffuse_area_light->shape_id << 
-            ", radiance=" << diffuse_area_light->radiance << "]";
+            ", intensity=" << diffuse_area_light->intensity << "]";
     } else {
         // Likely an unhandled case.
         os << "Unknown]";
@@ -55,22 +55,22 @@ std::ostream& operator<<(std::ostream &os, const ParsedLight &light) {
     return os;
 }
 
-std::ostream& operator<<(std::ostream &os, const ParsedShape &shape) {
+std::ostream& operator<<(std::ostream &os, const Shape &shape) {
     os << "Shape[type=";
-    if (auto *sphere = std::get_if<ParsedSphere>(&shape)) {
+    if (auto *sphere = std::get_if<Sphere>(&shape)) {
         os << "Sphere, " << 
               "material_id=" << sphere->material_id << ", " <<
               "area_light_id=" << sphere->area_light_id << ", " <<
-              "position=" << sphere->position << ", " <<
+              "center=" << sphere->center << ", " <<
               "radius=" << sphere->radius << "]";
-    } else if (auto *triangle_mesh = std::get_if<ParsedTriangleMesh>(&shape)) {
-        os << "TriangleMesh, " << 
-              "material_id=" << triangle_mesh->material_id << ", " << 
-              "area_light_id=" << triangle_mesh->area_light_id << ", " <<
-              "num_vertices=" << triangle_mesh->positions.size() << ", " <<
-              "num_faces=" << triangle_mesh->indices.size() << ", " <<
-              "has_normals=" << (triangle_mesh->normals.size() > 0) << ", " <<
-              "has_uvs=" << (triangle_mesh->uvs.size() > 0) << "]";
+    // } else if (auto *triangle_mesh = std::get_if<TriangleMesh>(&shape)) {
+    //     os << "TriangleMesh, " << 
+    //           "material_id=" << triangle_mesh->material_id << ", " << 
+    //           "area_light_id=" << triangle_mesh->area_light_id << ", " <<
+    //           "num_vertices=" << triangle_mesh->positions.size() << ", " <<
+    //           "num_faces=" << triangle_mesh->indices.size() << ", " <<
+    //           "has_normals=" << (triangle_mesh->normals.size() > 0) << ", " <<
+    //           "has_uvs=" << (triangle_mesh->uvs.size() > 0) << "]";
     } else {
         // Likely an unhandled case.
         os << "Unknown]";
@@ -78,7 +78,7 @@ std::ostream& operator<<(std::ostream &os, const ParsedShape &shape) {
     return os;
 }
 
-std::ostream& operator<<(std::ostream &os, const ParsedScene &scene) {
+std::ostream& operator<<(std::ostream &os, const Scene &scene) {
     os << "Scene[";
     os << scene.camera << std::endl;
     for (auto m : scene.materials) {
@@ -90,6 +90,6 @@ std::ostream& operator<<(std::ostream &os, const ParsedScene &scene) {
     for (auto s : scene.shapes) {
         os << "\t" << s << std::endl;
     }
-    os << "\tsamples_per_pixel=" << scene.samples_per_pixel << "]";
+    os << "\tsamples_per_pixel=" << scene.options.spp << "]";
     return os;
 }

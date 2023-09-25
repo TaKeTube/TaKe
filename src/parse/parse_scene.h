@@ -8,6 +8,9 @@
 #include <variant>
 #include <vector>
 
+inline void set_material_id(TriangleMesh &mesh, int material_id) {
+    mesh.material_id = material_id;
+}
 inline void set_material_id(Shape &shape, int material_id) {
     std::visit([&](auto &s) { s.material_id = material_id; }, shape);
 }
