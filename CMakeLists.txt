@@ -74,6 +74,8 @@ set(SRCS src/3rdparty/miniz.h
          src/shape.cpp
          src/texture.h
          src/texture.cpp
+         src/distribution.h
+         src/distribution.cpp
          )
 
 add_library(take_lib STATIC ${SRCS})
