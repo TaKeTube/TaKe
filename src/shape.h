@@ -56,6 +56,22 @@ inline PointAndNormal sample_on_shape(const Shape& shape, const std::vector<Tria
     return std::visit(sample_on_shape_op{meshes, ref_pos, rng}, shape);
 }
 
+struct sample_on_shape_pdf_op {
+    Real operator()(const Sphere &s) const;
+    Real operator()(const Triangle &s) const;
+
+    const std::vector<TriangleMesh>& meshes;
+    const PointAndNormal &shape_point;
+    const Vector3 &ref_pos;
+};
+
+inline Real get_shape_pdf(const Shape &s, 
+                          const Vector3 &ref_pos, 
+                          const PointAndNormal &shape_point, 
+                          const std::vector<TriangleMesh>& meshes) {
+    return std::visit(sample_on_shape_pdf_op{meshes, shape_point, ref_pos}, s);
+}
+
 struct get_area_op {
     Real operator()(const Sphere &s) const;
     Real operator()(const Triangle &s) const;

@@ -699,7 +699,8 @@ std::tuple<std::string /* ID */, Material> parse_bsdf(
 }
 
 Light parse_emitter(pugi::xml_node node,
-                          const std::map<std::string, std::string> &default_map) {
+                    TexturePool &texture_pool,
+                    const std::map<std::string, std::string> &default_map) {
     std::string type = node.attribute("type").value();
     if (type == "point") {
         Vector3 position = Vector3{0, 0, 0};
@@ -721,6 +722,33 @@ Light parse_emitter(pugi::xml_node node,
             }
         }
         return PointLight{position, intensity};
+    } else if (type == "envmap") {
+        std::string filename;
+        Real scale = 1;
+        Matrix4x4 to_world = Matrix4x4::identity();
+        for (auto child : node.children()) {
+            std::string name = child.attribute("name").value();
+            if (name == "filename") {
+                filename = parse_string(
+                    child.attribute("value").value(), default_map);
+            } else if (name == "toWorld" || name == "to_world") {
+                to_world = parse_transform(child, default_map);
+            } else if (name == "scale") {
+                scale = parse_float(
+                    child.attribute("value").value(), default_map);
+            }
+        }
+        if (filename.size() > 0) {
+            fs::path path(filename);
+            if (path.is_relative()) {
+                path = fs::current_path() / path;
+            }
+            Texture t = ImageTexture{insert_image3(texture_pool, path.string(), path), 1, 1, 0, 0};
+            Matrix4x4 to_local = inverse(to_world);
+            return Envmap{t, to_world, to_local, scale};
+        } else {
+            Error("Filename unspecified for envmap.");
+        }
     } else {
         Error(std::string("Unknown emitter: ") + type);
     }
@@ -728,12 +756,12 @@ Light parse_emitter(pugi::xml_node node,
 
 void parse_shape(pugi::xml_node node,
                  std::vector<Material> &materials,
-                 std::map<std::string /* name id */, int /* index id */> &material_map,
-                 std::map<std::string /* name id */, Texture> &texture_map,
-                 TexturePool &texture_pool,
                  std::vector<Light> &lights,
                  std::vector<Shape> &shapes,
                  std::vector<TriangleMesh> &meshes,
+                 TexturePool &texture_pool,
+                 std::map<std::string /* name id */, int /* index id */> &material_map,
+                 std::map<std::string /* name id */, Texture> &texture_map,
                  const std::map<std::string, std::string> &default_map) {
     // First, parse the material inside the shape and get the material ID.
     int material_id = -1;
@@ -802,7 +830,7 @@ void parse_shape(pugi::xml_node node,
         if(is_emitter){
             set_area_light_id(shape, lights.size());
             lights.push_back(
-                DiffuseAreaLight{(int)shapes.size() /* shape ID */, radiance});
+                AreaLight{(int)shapes.size() /* shape ID */, radiance});
         }
         shapes.push_back(shape);
     }else{
@@ -939,7 +967,7 @@ void parse_shape(pugi::xml_node node,
                 Triangle tri = { material_id, -1, face_index, static_cast<int>(meshes.size() - 1) };
                 if (is_emitter) {
                     tri.area_light_id = static_cast<int>(lights.size());
-                    lights.push_back(DiffuseAreaLight{ static_cast<int>(shapes.size()) /* shape ID */, radiance });
+                    lights.push_back(AreaLight{ static_cast<int>(shapes.size()) /* shape ID */, radiance });
                 }
                 shapes.push_back(tri);
             }
@@ -968,6 +996,7 @@ Scene parse_scene(pugi::xml_node node) {
     std::map<std::string /* name id */, int /* index id */> material_map;
     Vector3 background_color = Vector3{0.5, 0.5, 0.5};
     int sample_count = 16;
+    int envmap_light_id = -1;
 
     for (auto child : node.children()) {
         std::string name = child.name();
@@ -986,16 +1015,20 @@ Scene parse_scene(pugi::xml_node node) {
                 materials.push_back(m);
             }
         } else if (name == "emitter") {
-            lights.push_back(parse_emitter(child, default_map));
+            std::string type = child.attribute("type").value();
+            lights.push_back(parse_emitter(child, texture_pool, default_map));
+            if (type == "envmap") {
+                envmap_light_id = static_cast<int>(lights.size() - 1);
+            }
         } else if (name == "shape") {
             parse_shape(child,
                         materials,
-                        material_map,
-                        texture_map,
-                        texture_pool,
                         lights,
                         shapes,
                         meshes,
+                        texture_pool,
+                        material_map,
+                        texture_map,
                         default_map);
         } else if (name == "texture") {
             std::string id = child.attribute("id").value();
@@ -1019,6 +1052,7 @@ Scene parse_scene(pugi::xml_node node) {
                  std::move(materials),
                  std::move(texture_pool),
                  background_color,
+                 envmap_light_id,
                  {sample_count, -1},
                  filename,
                  };

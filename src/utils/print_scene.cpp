@@ -44,8 +44,8 @@ std::ostream& operator<<(std::ostream &os, const Light &light) {
     os << "Light[type=";
     if (auto *point = std::get_if<PointLight>(&light)) {
         os << "Point, position=" << point->position << ", intensity=" << point->intensity << "]";
-    } else if (auto *diffuse_area_light = std::get_if<DiffuseAreaLight>(&light)) {
-        os << "DiffuseAreaLight, shape_id=" << 
+    } else if (auto *diffuse_area_light = std::get_if<AreaLight>(&light)) {
+        os << "AreaLight, shape_id=" << 
             diffuse_area_light->shape_id << 
             ", intensity=" << diffuse_area_light->intensity << "]";
     } else {

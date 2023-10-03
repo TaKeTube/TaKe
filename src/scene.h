@@ -21,6 +21,7 @@ struct Scene {
     std::vector<Material> materials;
     TexturePool textures;
     Vector3 background_color;
+    int envmap_light_id;
 
     RenderOptions options;
     std::string output_filename;
@@ -44,7 +45,7 @@ inline void debug_log(Scene& scene) {
     Light &l = scene.lights[0];
     if (auto* ll = std::get_if<PointLight>(&l))
         printf("l[0] intensity.x: %f\n", ll->intensity.x);
-    else if (auto* ll = std::get_if<DiffuseAreaLight>(&l))
+    else if (auto* ll = std::get_if<AreaLight>(&l))
         printf("l[0] intensity.x: %f\n", ll->intensity.x);
 
     Material &m = scene.materials[0];

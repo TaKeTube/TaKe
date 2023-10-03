@@ -168,6 +168,16 @@ PointAndNormal sample_on_shape_op::operator()(const Triangle &t) const {
     return {point, dot(shading_normal, normal) > 0 ? normal : -normal};
 }
 
+Real sample_on_shape_pdf_op::operator()(const Sphere &s) const {
+    Real r = s.radius;
+    Real d = length(shape_point.position - ref_pos);
+    return 1/(c_TWOPI * r * r * (1 - r / d));
+}
+
+Real sample_on_shape_pdf_op::operator()(const Triangle &t) const {
+    return 1/get_area(t, meshes);
+}
+
 Real get_area_op::operator()(const Sphere &s) const {
     return 4*c_PI*s.radius*s.radius;
 }

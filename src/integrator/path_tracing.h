@@ -13,7 +13,7 @@ Vector3 path_tracing(const Scene& scene, const Ray& ray, std::mt19937& rng){
 
     if(v.area_light_id != -1) {
         const Light& light = scene.lights.at(v.area_light_id);
-        if (auto* l = std::get_if<DiffuseAreaLight>(&light))
+        if (auto* l = std::get_if<AreaLight>(&light))
             radiance += throughput * l->intensity;
     }
 
@@ -30,13 +30,13 @@ Vector3 path_tracing(const Scene& scene, const Ray& ray, std::mt19937& rng){
         if(scene.lights.size() > 0 && !is_specular){
             int light_id = sample_light(scene, rng);
             auto light = scene.lights[light_id];
-            if (auto* l = std::get_if<DiffuseAreaLight>(&light)) {
+            if (auto* l = std::get_if<AreaLight>(&light)) {
                 auto& light_point = sample_on_light(scene, *l, v.pos, rng);
                 auto& [light_pos, light_n] = light_point;
                 Real d = length(light_pos - v.pos);
                 Vector3 light_dir = normalize(light_pos - v.pos);
 
-                Real light_pdf = get_light_pdf(scene, light_id, light_point, v.pos) * (d * d) / (fmax(dot(-light_n, light_dir), Real(0)) * scene.lights.size());
+                Real light_pdf = get_light_pdf(scene, light, light_point, v.pos) * (d * d) / (fmax(dot(-light_n, light_dir), Real(0)) * scene.lights.size());
                 if(light_pdf <= 0){
                     // std::cout << light_pdf << "light pdf break" << std::endl;
                     break;
@@ -89,13 +89,13 @@ Vector3 path_tracing(const Scene& scene, const Ray& ray, std::mt19937& rng){
             Vector3 &light_pos = new_v_->pos;
             Real d = length(light_pos - v.pos);
             Vector3 light_dir = normalize(light_pos - v.pos);
-            light_pdf = get_light_pdf(scene, new_v_->area_light_id, {new_v_->pos, new_v_->geo_normal}, v.pos) * (d * d) / (fmax(dot(-new_v_->geo_normal, light_dir), Real(0)) * scene.lights.size());
+            light_pdf = get_light_pdf(scene, scene.lights[new_v_->area_light_id], {new_v_->pos, new_v_->geo_normal}, v.pos) * (d * d) / (fmax(dot(-new_v_->geo_normal, light_dir), Real(0)) * scene.lights.size());
             if(light_pdf <= 0){
                 // std::cout << dot(-new_v_->geo_normal, light_dir) << std::endl;
                 break;
             }
             auto light = scene.lights[new_v_->area_light_id];
-            if (auto* l = std::get_if<DiffuseAreaLight>(&light)){
+            if (auto* l = std::get_if<AreaLight>(&light)){
                 C2 = FG * l->intensity * (is_specular ? (1 / bsdf_pdf): (bsdf_pdf / (light_pdf * light_pdf + bsdf_pdf * bsdf_pdf)));
             }
         }
@@ -122,7 +122,7 @@ Vector3 path_tracing_raw(const Scene& scene, const Ray& ray, std::mt19937& rng){
     for(int i = 0; i <= scene.options.max_depth; ++i){
         if(v.area_light_id != -1) {
             const Light& light = scene.lights.at(v.area_light_id);
-            if (auto* l = std::get_if<DiffuseAreaLight>(&light)){
+            if (auto* l = std::get_if<AreaLight>(&light)){
                 radiance += throughput * l->intensity;
                 break;
             }
@@ -169,7 +169,7 @@ Vector3 path_tracing_one_sample_MIS(const Scene& scene, const Ray& ray, std::mt1
     for(int i = 0; i <= scene.options.max_depth; ++i){
         if(v.area_light_id != -1) {
             const Light& light = scene.lights.at(v.area_light_id);
-            if (auto* l = std::get_if<DiffuseAreaLight>(&light)){
+            if (auto* l = std::get_if<AreaLight>(&light)){
                 // std::cout << throughput << std::endl;
                 radiance += throughput * l->intensity;
                 break;
@@ -188,13 +188,13 @@ Vector3 path_tracing_one_sample_MIS(const Scene& scene, const Ray& ray, std::mt1
             // Sampling Light
             int light_id = sample_light(scene, rng);
             auto light = scene.lights[light_id];
-            if (auto* l = std::get_if<DiffuseAreaLight>(&light)) {
+            if (auto* l = std::get_if<AreaLight>(&light)) {
                 auto& light_point = sample_on_light(scene, *l, v.pos, rng);
                 auto& [light_pos, light_n] = light_point;
                 Real d = length(light_pos - v.pos);
                 Vector3 light_dir = normalize(light_pos - v.pos);
 
-                Real light_pdf = get_light_pdf(scene, light_id, light_point, v.pos) * (d * d) / (fmax(dot(-light_n, light_dir), Real(0)) * scene.lights.size());
+                Real light_pdf = get_light_pdf(scene, light, light_point, v.pos) * (d * d) / (fmax(dot(-light_n, light_dir), Real(0)) * scene.lights.size());
                 if(light_pdf <= 0){
                     // std::cout << light_pdf << "light pdf break" << std::endl;
                     break;
@@ -256,7 +256,7 @@ Vector3 path_tracing_one_sample_MIS(const Scene& scene, const Ray& ray, std::mt1
                 Vector3 &light_pos = new_v_->pos;
                 Real d = length(light_pos - v.pos);
                 Vector3 light_dir = normalize(light_pos - v.pos);
-                Real light_pdf = get_light_pdf(scene, new_v_->area_light_id, {new_v_->pos, new_v_->geo_normal}, v.pos) * (d * d) / (fmax(dot(-new_v_->geo_normal, light_dir), Real(0)) * scene.lights.size());
+                Real light_pdf = get_light_pdf(scene, scene.lights[new_v_->area_light_id], {new_v_->pos, new_v_->geo_normal}, v.pos) * (d * d) / (fmax(dot(-new_v_->geo_normal, light_dir), Real(0)) * scene.lights.size());
                 if(light_pdf <= 0){
                     // std::cout << dot(-new_v_->geo_normal, light_dir) << std::endl;
                     break;
@@ -283,7 +283,7 @@ Vector3 path_tracing_one_sample_MIS_power(const Scene& scene, const Ray& ray, st
     for(int i = 0; i <= scene.options.max_depth; ++i){
         if(v.area_light_id != -1) {
             const Light& light = scene.lights.at(v.area_light_id);
-            if (auto* l = std::get_if<DiffuseAreaLight>(&light)){
+            if (auto* l = std::get_if<AreaLight>(&light)){
                 // std::cout << throughput << std::endl;
                 radiance += throughput * l->intensity;
                 break;
@@ -300,13 +300,13 @@ Vector3 path_tracing_one_sample_MIS_power(const Scene& scene, const Ray& ray, st
             // Sampling Light
             int light_id = sample_light_power(scene, rng);
             auto light = scene.lights[light_id];
-            if (auto* l = std::get_if<DiffuseAreaLight>(&light)) {
+            if (auto* l = std::get_if<AreaLight>(&light)) {
                 auto& light_point = sample_on_light(scene, *l, v.pos, rng);
                 auto& [light_pos, light_n] = light_point;
                 Real d = length(light_pos - v.pos);
                 Vector3 light_dir = normalize(light_pos - v.pos);
 
-                Real light_pdf = get_light_pdf(scene, light_id, light_point, v.pos) * (d * d) * get_light_pmf(scene, light_id) / (fmax(dot(-light_n, light_dir), Real(0)));
+                Real light_pdf = get_light_pdf(scene, light, light_point, v.pos) * (d * d) * get_light_pmf(scene, light_id) / (fmax(dot(-light_n, light_dir), Real(0)));
                 if(light_pdf <= 0){
                     // std::cout << light_pdf << "light pdf break" << std::endl;
                     break;
@@ -365,7 +365,7 @@ Vector3 path_tracing_one_sample_MIS_power(const Scene& scene, const Ray& ray, st
                 Vector3 &light_pos = new_v_->pos;
                 Real d = length(light_pos - v.pos);
                 Vector3 light_dir = normalize(light_pos - v.pos);
-                Real light_pdf = get_light_pdf(scene, new_v_->area_light_id, {new_v_->pos, new_v_->geo_normal}, v.pos) * (d * d) * get_light_pmf(scene, new_v_->area_light_id) / fmax(dot(-new_v_->geo_normal, light_dir), Real(0));
+                Real light_pdf = get_light_pdf(scene, scene.lights[new_v_->area_light_id], {new_v_->pos, new_v_->geo_normal}, v.pos) * (d * d) * get_light_pmf(scene, new_v_->area_light_id) / fmax(dot(-new_v_->geo_normal, light_dir), Real(0));
                 if(light_pdf <= 0){
                     // std::cout << dot(-new_v_->geo_normal, light_dir) << std::endl;
                     break;

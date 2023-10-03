@@ -2,6 +2,73 @@
 #include "scene.h"
 #include <algorithm>
 
+struct light_power_op {
+    Real operator()(const PointLight &l) const;
+    Real operator()(const AreaLight &l) const;
+    Real operator()(const Envmap &l) const;
+
+    const Scene &scene;
+};
+
+struct sample_on_light_op {
+    PointAndNormal operator()(const PointLight &l) const;
+    PointAndNormal operator()(const AreaLight &l) const;
+    PointAndNormal operator()(const Envmap &l) const;
+
+    const Scene &scene;
+    const Vector3 &ref_pos;
+    std::mt19937& rng;
+};
+
+struct sample_on_light_pdf_op {
+    Real operator()(const PointLight &l) const;
+    Real operator()(const AreaLight &l) const;
+    Real operator()(const Envmap &l) const;
+
+    const Scene &scene;
+    const PointAndNormal &light_point;
+    const Vector3 &ref_pos;
+};
+
+struct emission_op {
+    Vector3 operator()(const PointLight &l) const;
+    Vector3 operator()(const AreaLight &l) const;
+    Vector3 operator()(const Envmap &l) const;
+
+    const Scene &scene;
+    const Vector3 &view_dir;
+    const PointAndNormal &light_point;
+};
+
+#include "lights/point_light.inl"
+#include "lights/area_light.inl"
+#include "lights/envmap.inl"
+
+Real light_power(const Scene &scene, const Light &l) {
+    return std::visit(light_power_op{scene}, l);
+}
+
+PointAndNormal sample_on_light(const Scene &scene, 
+                               const Light& l, 
+                               const Vector3 &ref_pos, 
+                               std::mt19937& rng) {
+    return std::visit(sample_on_light_op{scene, ref_pos, rng}, l);
+}
+
+Real get_light_pdf(const Scene &scene, 
+                   const Light& l,
+                   const PointAndNormal &light_point,
+                   const Vector3 &ref_pos) {
+    return std::visit(sample_on_light_pdf_op{scene, light_point, ref_pos}, l);
+}
+
+Vector3 get_emission(const Scene &scene, 
+                     const Light& l, 
+                     const Vector3 &view_dir, 
+                     const PointAndNormal &light_point) {
+    return std::visit(emission_op{scene, view_dir, light_point}, l);
+}
+
 int sample_light(const Scene &scene, std::mt19937& rng) {
     return static_cast<int>(floor(random_real(rng) * scene.lights.size()));
 }
@@ -20,37 +87,4 @@ Real get_light_pmf(const Scene &scene, int id) {
     const std::vector<Real> &pmf = scene.lights_power_pmf;
     assert(id >= 0 && id < (int)pmf.size());
     return pmf[id];
-}
-
-Real light_power(const Scene &scene, const Light &light) {
-    if(auto* l = std::get_if<DiffuseAreaLight>(&light)){
-        return luminance(l->intensity) * get_area(scene.shapes[l->shape_id], scene.meshes) * c_PI;
-    }
-    return 0;
-}
-
-Real get_light_pdf(const Scene &scene, int light_id,
-                   const PointAndNormal &light_point,
-                   const Vector3 &ref_pos) {
-    if(auto* l = std::get_if<DiffuseAreaLight>(&scene.lights[light_id])){
-        auto shape = scene.shapes[l->shape_id];
-        if(auto* s = std::get_if<Triangle>(&shape)){
-            return 1/get_area(*s, scene.meshes);
-        }else if(auto* s = std::get_if<Sphere>(&shape)){
-            // return 1/get_area(*s);
-            Real r = s->radius;
-            Real d = length(light_point.position - ref_pos);
-            return 1/(c_TWOPI * r * r * (1 - r / d));
-        }
-    }
-    // std::cout << light_id << std::endl;
-    return 0;
-}
-
-PointAndNormal sample_on_light_op::operator()(const PointLight &l) const {
-    return {l.position, Vector3{0, 0, 0}};
-}
-
-PointAndNormal sample_on_light_op::operator()(const DiffuseAreaLight &l) const {
-    return std::visit(sample_on_shape_op{scene.meshes, ref_pos, rng}, scene.shapes.at(l.shape_id));
 }
