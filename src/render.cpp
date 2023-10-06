@@ -26,6 +26,9 @@ Image3 render(const std::vector<std::string> &params) {
     std::cout << "Parsing and constructing scene " << params[0] << "." << std::endl;
     tick(timer);
     Scene scene = parse_scene(params[0]);
+    // TODO we should put this into the constructor of the scene
+    for(auto& l:scene.lights)
+        init_sample_dist(l, scene);
     std::cout << "Scene parsing done. Took " << tick(timer) << " seconds." << std::endl;
     UNUSED(scene);
 

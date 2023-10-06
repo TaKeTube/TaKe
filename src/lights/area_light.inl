@@ -16,3 +16,6 @@ Vector3 emission_op::operator()(const AreaLight &l) const {
     }
     return l.intensity;
 }
+
+void init_sample_dist_op::operator()(AreaLight &l) const {
+}

@@ -49,7 +49,9 @@ Vector3 path_tracing(const Scene& scene, const Ray& ray, std::mt19937& rng){
                     record.dir_out = light_dir;
                     Vector3 FG = eval(m, dir_in, record, v, scene.textures);
 
-                    // TODO Multi light may cause different behavior here, needs to be check
+                    // TODO Multiple lights may cause different behavior here,
+                    // for example, sample a light point that is blocked by another light
+                    // needs to be checked here
                     Ray shadow_r = Ray{v.pos, light_dir, c_EPSILON, (1 - c_EPSILON) * d};
                     if(!scene_occluded(scene, shadow_r)){
                         C1 = FG * get_light_emission(scene, light, -light_dir, light_point) * light_pdf / (light_pdf * light_pdf + bsdf_pdf * bsdf_pdf);

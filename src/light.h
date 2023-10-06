@@ -12,7 +12,7 @@ struct Scene;
 
 struct PointLight {
     Vector3 intensity;
-    Vector3 position;    
+    Vector3 position;
 };
 
 struct AreaLight {
@@ -43,6 +43,7 @@ Vector3 get_light_emission(const Scene &scene,
                            const Light& l, 
                            const Vector3 &view_dir, 
                            const PointAndNormal &light_point);
+void init_sample_dist(Light &l, const Scene &scene);
 
 int sample_light(const Scene &scene, std::mt19937& rng);
 int sample_light_power(const Scene &scene, std::mt19937& rng);

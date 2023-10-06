@@ -20,6 +20,7 @@ void build_bvh(Scene& scene) {
         }
     }
     scene.bvh_root_id = construct_bvh(bboxes, scene.bvh_nodes);
+    // TODO this logic should be moved to other places to maintain sematics
     Vector3 scene_pmax = scene.bvh_nodes[scene.bvh_root_id].box.p_max;
     Vector3 scene_pmin = scene.bvh_nodes[scene.bvh_root_id].box.p_min;
     scene.bounds = {distance(scene_pmax, scene_pmin) * 0.5, (scene_pmax + scene_pmin) * 0.5};

@@ -13,3 +13,6 @@ Real sample_on_light_pdf_op::operator()(const PointLight &l) const {
 Vector3 emission_op::operator()(const PointLight &l) const {
     return l.intensity;
 }
+
+void init_sample_dist_op::operator()(PointLight &l) const {
+}

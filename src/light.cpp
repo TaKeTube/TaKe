@@ -40,6 +40,14 @@ struct emission_op {
     const PointAndNormal &light_point;
 };
 
+struct init_sample_dist_op {
+    void operator()(PointLight &l) const;
+    void operator()(AreaLight &l) const;
+    void operator()(Envmap &l) const;
+
+    const Scene &scene;
+};
+
 #include "lights/point_light.inl"
 #include "lights/area_light.inl"
 #include "lights/envmap.inl"
@@ -67,6 +75,10 @@ Vector3 get_light_emission(const Scene &scene,
                            const Vector3 &view_dir, 
                            const PointAndNormal &light_point) {
     return std::visit(emission_op{scene, view_dir, light_point}, l);
+}
+
+void init_sample_dist(Light &l, const Scene &scene) {
+    return std::visit(init_sample_dist_op{scene}, l);
 }
 
 int sample_light(const Scene &scene, std::mt19937& rng) {

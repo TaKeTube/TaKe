@@ -45,3 +45,33 @@ Vector3 emission_op::operator()(const Envmap &l) const {
     }
     return eval(l.intensity, uv, scene.textures) * l.scale;
 }
+
+void init_sample_dist_op::operator()(Envmap &l) const {
+    if (auto *t = std::get_if<ImageTexture>(&l.intensity)) {
+        const Image3& texture = scene.textures.image3s[t->texture_id];
+        int w = texture.width;
+        int h = texture.height;
+        std::vector<std::vector<Real>> f(h, std::vector<Real>(w));
+        for (int y = 0; y < h; y++) {
+            // Shift the grids by 0.5 pixels to get a better approximation of the piece-wise bilinear function
+            // If we do not shift, two functions would be like
+            //     /
+            //   /  
+            // /-----
+            // If we shift, two functions would be like
+            //      /
+            //  --/---
+            // |/    |
+            // Which is better
+            Real v = (y + Real(0.5)) / Real(h);
+            // "The motivation for adjusting the PDF is to eliminate the effect of the distortion 
+            // from mapping the 2D image to the unit sphere in the sampling method here" -- PBRT
+            Real sin_theta = sin(c_PI * v);
+            for (int x = 0; x < w; x++) {
+                Real u = (x + Real(0.5)) / Real(w);
+                f[y][x] = luminance(eval(l.intensity, Vector2{u, v}, scene.textures)) * sin_theta;
+            }
+        }
+        l.dist = make_dist2D(f);
+    }
+}
