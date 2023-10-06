@@ -10,6 +10,11 @@ struct RenderOptions {
     int max_depth = -1;
 };
 
+struct BSphere {
+    Real radius;
+    Vector3 center;
+};
+
 struct Scene {
     // Scene();
     // Scene(const Scene& scene);
@@ -29,6 +34,7 @@ struct Scene {
     std::vector<Real> lights_power_pmf;
     std::vector<Real> lights_power_cdf;
 
+    BSphere bounds;
     std::vector<BVHNode> bvh_nodes;
     int bvh_root_id;
 };

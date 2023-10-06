@@ -2,9 +2,11 @@
 #include <variant>
 #include "vector.h"
 #include "matrix.h"
+#include "transform.h"
 #include "intersection.h"
 #include "shape.h"
 #include "distribution.h"
+#include "texture.h"
 
 struct Scene;
 
@@ -19,7 +21,7 @@ struct AreaLight {
 };
 
 struct Envmap {
-    Texture values;
+    Texture intensity;
     Matrix4x4 to_world, to_local;
     Real scale;
 
@@ -28,17 +30,19 @@ struct Envmap {
 
 using Light = std::variant<PointLight, AreaLight, Envmap>;
 
-Real light_power(const Scene &scene, const Light &light);
+Real get_light_power(const Scene &scene, const Light &l);
 PointAndNormal sample_on_light(const Scene &scene, 
                                const Light& l, 
                                const Vector3 &ref_pos, 
                                std::mt19937& rng);
-Real get_light_pdf(const Scene &scene,
-                   const Light &light,
+Real get_light_pdf(const Scene &scene, 
+                   const Light& l,
                    const PointAndNormal &light_point,
-                   const Vector3 &ref_pos
-);
-Vector3 emission(const Light &light);
+                   const Vector3 &ref_pos);
+Vector3 get_light_emission(const Scene &scene, 
+                           const Light& l, 
+                           const Vector3 &view_dir, 
+                           const PointAndNormal &light_point);
 
 int sample_light(const Scene &scene, std::mt19937& rng);
 int sample_light_power(const Scene &scene, std::mt19937& rng);

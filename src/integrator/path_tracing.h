@@ -14,7 +14,7 @@ Vector3 path_tracing(const Scene& scene, const Ray& ray, std::mt19937& rng){
     if(v.area_light_id != -1) {
         const Light& light = scene.lights.at(v.area_light_id);
         if (auto* l = std::get_if<AreaLight>(&light))
-            radiance += throughput * l->intensity;
+            radiance += throughput * get_light_emission(scene, light, -r.dir, PointAndNormal{v.pos, v.geo_normal});
     }
 
     for(int i = 0; i <= scene.options.max_depth; ++i){
@@ -52,7 +52,7 @@ Vector3 path_tracing(const Scene& scene, const Ray& ray, std::mt19937& rng){
                     // TODO Multi light may cause different behavior here, needs to be check
                     Ray shadow_r = Ray{v.pos, light_dir, c_EPSILON, (1 - c_EPSILON) * d};
                     if(!scene_occluded(scene, shadow_r)){
-                        C1 = FG * l->intensity * light_pdf / (light_pdf * light_pdf + bsdf_pdf * bsdf_pdf);
+                        C1 = FG * get_light_emission(scene, light, -light_dir, light_point) * light_pdf / (light_pdf * light_pdf + bsdf_pdf * bsdf_pdf);
                     }
                 }
             }
@@ -89,14 +89,15 @@ Vector3 path_tracing(const Scene& scene, const Ray& ray, std::mt19937& rng){
             Vector3 &light_pos = new_v_->pos;
             Real d = length(light_pos - v.pos);
             Vector3 light_dir = normalize(light_pos - v.pos);
-            light_pdf = get_light_pdf(scene, scene.lights[new_v_->area_light_id], {new_v_->pos, new_v_->geo_normal}, v.pos) * (d * d) / (fmax(dot(-new_v_->geo_normal, light_dir), Real(0)) * scene.lights.size());
+            auto& light = scene.lights[new_v_->area_light_id];
+            PointAndNormal light_point = {new_v_->pos, new_v_->geo_normal};
+            light_pdf = get_light_pdf(scene, light, light_point, v.pos) * (d * d) / (fmax(dot(-new_v_->geo_normal, light_dir), Real(0)) * scene.lights.size());
             if(light_pdf <= 0){
                 // std::cout << dot(-new_v_->geo_normal, light_dir) << std::endl;
                 break;
             }
-            auto light = scene.lights[new_v_->area_light_id];
             if (auto* l = std::get_if<AreaLight>(&light)){
-                C2 = FG * l->intensity * (is_specular ? (1 / bsdf_pdf): (bsdf_pdf / (light_pdf * light_pdf + bsdf_pdf * bsdf_pdf)));
+                C2 = FG * get_light_emission(scene, light, -light_pos, light_point) * (is_specular ? (1 / bsdf_pdf): (bsdf_pdf / (light_pdf * light_pdf + bsdf_pdf * bsdf_pdf)));
             }
         }
         radiance += throughput * C2;
@@ -123,7 +124,7 @@ Vector3 path_tracing_raw(const Scene& scene, const Ray& ray, std::mt19937& rng){
         if(v.area_light_id != -1) {
             const Light& light = scene.lights.at(v.area_light_id);
             if (auto* l = std::get_if<AreaLight>(&light)){
-                radiance += throughput * l->intensity;
+                radiance += throughput * get_light_emission(scene, light, -r.dir, PointAndNormal{v.pos, v.geo_normal});
                 break;
             }
         } else {
@@ -171,7 +172,7 @@ Vector3 path_tracing_one_sample_MIS(const Scene& scene, const Ray& ray, std::mt1
             const Light& light = scene.lights.at(v.area_light_id);
             if (auto* l = std::get_if<AreaLight>(&light)){
                 // std::cout << throughput << std::endl;
-                radiance += throughput * l->intensity;
+                radiance += throughput * get_light_emission(scene, light, -r.dir, PointAndNormal{v.pos, v.geo_normal});
                 break;
             }
         }
@@ -285,7 +286,7 @@ Vector3 path_tracing_one_sample_MIS_power(const Scene& scene, const Ray& ray, st
             const Light& light = scene.lights.at(v.area_light_id);
             if (auto* l = std::get_if<AreaLight>(&light)){
                 // std::cout << throughput << std::endl;
-                radiance += throughput * l->intensity;
+                radiance += throughput * get_light_emission(scene, light, -r.dir, PointAndNormal{v.pos, v.geo_normal});
                 break;
             }
         }

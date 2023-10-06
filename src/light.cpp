@@ -44,7 +44,7 @@ struct emission_op {
 #include "lights/area_light.inl"
 #include "lights/envmap.inl"
 
-Real light_power(const Scene &scene, const Light &l) {
+Real get_light_power(const Scene &scene, const Light &l) {
     return std::visit(light_power_op{scene}, l);
 }
 
@@ -62,10 +62,10 @@ Real get_light_pdf(const Scene &scene,
     return std::visit(sample_on_light_pdf_op{scene, light_point, ref_pos}, l);
 }
 
-Vector3 get_emission(const Scene &scene, 
-                     const Light& l, 
-                     const Vector3 &view_dir, 
-                     const PointAndNormal &light_point) {
+Vector3 get_light_emission(const Scene &scene, 
+                           const Light& l,
+                           const Vector3 &view_dir, 
+                           const PointAndNormal &light_point) {
     return std::visit(emission_op{scene, view_dir, light_point}, l);
 }
 
