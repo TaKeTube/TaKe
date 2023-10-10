@@ -48,3 +48,7 @@ void init_sample_dist(Light &l, const Scene &scene);
 int sample_light(const Scene &scene, std::mt19937& rng);
 int sample_light_power(const Scene &scene, std::mt19937& rng);
 Real get_light_pmf(const Scene &scene, int id);
+
+inline bool is_envmap(const Light &l) {
+    return std::get_if<Envmap>(&l) != nullptr;
+}

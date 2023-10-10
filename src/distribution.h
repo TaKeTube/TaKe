@@ -18,11 +18,11 @@ struct Distribution2D {
 Distribution1D make_dist1D(const std::vector<Real> &f);
 int sample_discrete(const Distribution1D& dist, std::mt19937& rng);
 Real sample_continuous(const Distribution1D& dist, std::mt19937& rng);
-inline Real get_dist1D_pmf(const Distribution1D &dist, const int idx);
-inline Real get_dist1D_pdf(const Distribution1D &dist, const Real u);
+Real get_dist1D_pmf(const Distribution1D &dist, const int idx);
+Real get_dist1D_pdf(const Distribution1D &dist, const Real u);
 
 Distribution2D make_dist2D(const std::vector<std::vector<Real>> &f);
 Vector2i sample_discrete(const Distribution2D& dist, std::mt19937& rng);
 Vector2 sample_continuous(const Distribution2D& dist, std::mt19937& rng);
-inline Real get_dist2D_pmf(const Distribution2D &dist, const Vector2i& idx);
-inline Real get_dist2D_pdf(const Distribution2D &dist, const Vector2& uv);
+Real get_dist2D_pmf(const Distribution2D &dist, const Vector2i& idx);
+Real get_dist2D_pdf(const Distribution2D &dist, const Vector2& uv);

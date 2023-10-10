@@ -44,6 +44,10 @@ set(SRCS src/3rdparty/miniz.h
          src/materials/phong.inl
          src/materials/blinn_phong.inl
          src/materials/blinn_phong_microfacet.inl
+         src/lights/point_light.inl
+         src/lights/area_light.inl
+         src/lights/envmap.inl
+         src/integrator/path_tracing.h
          src/compute_normals.h
          src/render.h
          src/render.cpp

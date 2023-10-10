@@ -72,13 +72,13 @@ Distribution2D make_dist2D(const std::vector<std::vector<Real>> &f){
     return Distribution2D{std::move(conditional), std::move(marginal)};
 }
 
-Vector2i sample_discrete(Distribution2D& dist, std::mt19937& rng){
+Vector2i sample_discrete(const Distribution2D& dist, std::mt19937& rng){
     int y = sample_discrete(dist.marginal, rng);
     int x = sample_discrete(dist.conditional[y], rng);
     return Vector2i{x, y};
 }
 
-Vector2 sample_continuous(Distribution2D& dist, std::mt19937& rng){
+Vector2 sample_continuous(const Distribution2D& dist, std::mt19937& rng){
     Real v = sample_continuous(dist.marginal, rng);
     Real u = sample_continuous(dist.conditional[static_cast<int>(v * dist.marginal.pmf.size())], rng);
     return Vector2{u, v};

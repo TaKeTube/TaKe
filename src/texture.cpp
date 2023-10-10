@@ -17,10 +17,8 @@ Vector3 eval_texture_op::operator()(const ImageTexture &t) const {
     Vector3 q12 = img(x1, y2);
     Vector3 q21 = img(x2, y1);
     Vector3 q22 = img(x2, y2);
-    if(x1 == x2)
-        x2 += 1;
-    if(y1 == y2)
-        y2 += 1;
+    x2 = x1 + 1;
+    y2 = y1 + 1;
     return (q11*(x2-x)*(y2-y)+q21*(x-x1)*(y2-y)+q12*(x2-x)*(y-y1)+q22*(x-x1)*(y-y1))/Real((x2-x1)*(y2-y1));
     // return img(floor(x), floor(y));
 }

@@ -138,3 +138,7 @@ inline Real compute_blinn_phong_G_hat(Vector3 omega, Vector3 n, Real alpha) {
     Real G_hat = a < Real(1.6) ? (Real(3.535)*a+Real(2.181)*a2)/(1+Real(2.276)*a+Real(2.577)*a2) : 1;
     return G_hat;
 }
+
+inline bool is_specular(const Material& m) {
+    return std::holds_alternative<Plastic>(m) || std::holds_alternative<Mirror>(m);
+}

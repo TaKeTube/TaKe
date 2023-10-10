@@ -43,6 +43,15 @@ std::optional<Intersection> scene_intersect(const Scene& scene, const Ray& r);
 bool scene_occluded(const Scene& scene, const Ray& r);
 void build_bvh(Scene& scene);
 
+inline bool has_envmap(const Scene &scene) {
+    return scene.envmap_light_id != -1;
+}
+
+inline const Light& get_envmap(const Scene &scene) {
+    assert(scene.envmap_light_id != -1);
+    return scene.lights[scene.envmap_light_id];
+}
+
 inline void debug_log(Scene& scene) {
     
     printf("scene.bvh_nodes[0].left_node_id: %d\n", scene.bvh_nodes[0].left_node_id);
